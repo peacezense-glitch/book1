@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: Inter, "Noto Sans TC", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 20px; color: var(--figma-color-text); }
+      h1 { margin: 0 0 8px; font-size: 18px; }
+      p { margin: 0 0 16px; color: var(--figma-color-text-secondary); font-size: 12px; line-height: 1.55; }
+      label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; }
+      input[type="text"] {
+        width: 100%;
+        height: 36px;
+        margin-bottom: 14px;
+        padding: 0 10px;
+        border: 1px solid var(--figma-color-border);
+        border-radius: 6px;
+        color: var(--figma-color-text);
+        background: var(--figma-color-bg);
+      }
+      .check { display: flex; gap: 8px; align-items: flex-start; margin: 2px 0 16px; font-weight: 400; }
+      .spec {
+        padding: 12px;
+        margin-bottom: 16px;
+        border: 1px solid var(--figma-color-border);
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.65;
+      }
+      button {
+        height: 36px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      #generate { width: 100%; color: white; background: #0d99ff; }
+      #generate:disabled { opacity: 0.55; cursor: wait; }
+      #close { width: 100%; margin-top: 8px; color: var(--figma-color-text); background: var(--figma-color-bg-secondary); }
+      #status { min-height: 40px; margin-top: 14px; font-size: 12px; line-height: 1.5; }
+      progress { width: 100%; height: 6px; margin-top: 8px; display: none; }
+      .error { color: #f24822; }
+      .success { color: #14ae5c; }
+    </style>
+  </head>
+  <body>
+    <h1>《歸源手鏡》直排內頁</h1>
+    <p>從 GitHub 版本的兩份 DOCX 生成可編輯的 Figma 書稿。</p>
+
+    <label for="target">Figma 頁面名稱</label>
+    <input id="target" type="text" value="book3 page" />
+
+    <label class="check">
+      <input id="replace" type="checkbox" checked />
+      <span>重新生成時移除上一個「歸源手鏡・內頁」區段</span>
+    </label>
+
+    <div class="spec">
+      成品：152 × 230 mm<br />
+      排版：繁體中文直排、由右至左<br />
+      印刷：純黑文字、白底、無彩色內頁<br />
+      結構：半書名、書名、目錄、正文、篇章頁、版權尾頁
+    </div>
+
+    <button id="generate">生成完整內頁</button>
+    <button id="close">關閉</button>
+    <progress id="progress" max="100" value="0"></progress>
+    <div id="status">完整書稿頁數較多，生成期間請保持 Figma 開啟。</div>
+
+    <script>
+      const generate = document.getElementById("generate");
+      const close = document.getElementById("close");
+      const progress = document.getElementById("progress");
+      const status = document.getElementById("status");
+
+      generate.onclick = () => {
+        generate.disabled = true;
+        progress.style.display = "block";
+        progress.value = 0;
+        status.className = "";
+        status.textContent = "正在準備書稿……";
+        parent.postMessage({
+          pluginMessage: {
+            type: "generate",
+            targetName: document.getElementById("target").value,
+            replace: document.getElementById("replace").checked
+          }
+        }, "*");
+      };
+
+      close.onclick = () => {
+        parent.postMessage({ pluginMessage: { type: "close" } }, "*");
+      };
+
+      onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message) return;
+        if (message.type === "progress") {
+          progress.max = message.total;
+          progress.value = message.current;
+          status.textContent = `正在生成第 ${message.current} / ${message.total} 頁……`;
+        }
+        if (message.type === "done") {
+          generate.disabled = false;
+          status.className = "success";
+          status.textContent =
+            `完成：${message.pages} 頁，位於「${message.targetPage}」，字體為 ${message.font}。`;
+        }
+        if (message.type === "error") {
+          generate.disabled = false;
+          status.className = "error";
+          status.textContent = `生成失敗：${message.message}`;
+        }
+      };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "歸源手鏡・直排書籍生成器",
+  "id": "gui-yuan-shou-jing-book-generator",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}
