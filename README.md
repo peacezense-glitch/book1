@@ -10,50 +10,50 @@ Plugin。任何電腦只要取得這個 GitHub 倉庫，都能重新生成同一
 - 內頁印刷：純黑文字、白底
 - 正文：15 欄 × 每欄 32 字
 - 裝訂邊留白：18 mm；外側留白：15 mm
-- 內容包括半書名頁、書名頁、目錄、篇章頁、正文及版權尾頁
-
-Figma 畫框使用 72 pt/in 的印刷比例，尺寸為約
-`430.866 × 651.969` Figma units；匯出 PDF 後應為 152 × 230 mm。
 
 ## 在 Figma 生成書稿
 
-1. 下載或 clone 本倉庫。
-2. 用 Figma Desktop 開啟 `Book` 檔案。
-3. 選擇 **Plugins → Development → Import plugin from manifest…**。
-4. 選擇 `figma-plugin/manifest.json`。
-5. 執行 **歸源手鏡・直排書籍生成器**。
-6. 頁面名稱保留為 `book3 page`，按「生成完整內頁」。
+Plugin 本體只有約 20KB，書稿資料放在 `data/book-data.json`，避免出現
+`unable to write resource to disk`。
 
-Plugin 會建立名為 `歸源手鏡・內頁（Plugin 生成）` 的 Section。再次生成時，
-預設只會替換這個 Section，不會刪除頁面上的其他設計。
+### 方法 A：直接匯入（推薦）
 
-生成完整書稿時會建立二百多個頁面畫框及數千個直排文字欄，請保持 Figma
-開啟直至進度完成。Plugin 會優先使用 `Noto Serif TC` 或
-`Source Han Serif TC`；如果電腦沒有這些字體，會自動選擇其他可用字體。
+1. Clone／下載本倉庫。
+2. 用 Figma Desktop 開啟 `Book`，進入 `book3 page`。
+3. **Plugins → Development → Import plugin from manifest…**
+4. 選擇 `figma-plugin/manifest.json`
+5. 執行 **Guiyuan Vertical Book**
+6. 載入書稿：
+   - 本機選擇 `data/book-data.json`，或
+   - 按「從 GitHub 載入書稿」
+7. 先選「樣本」生成，確認後再分卷生成
 
-## DOCX 更新後重建 Plugin
+### 方法 B：便攜 ZIP（路徑有中文／匯入失敗時）
 
-Plugin 已把書稿及尾頁圖片內嵌，執行時不需要網絡。修改 DOCX 後，在倉庫根目錄
-執行：
+1. 解壓 `figma-plugin/guiyuan-plugin-portable.zip` 到純英文路徑，例如
+   `~/Desktop/guiyuan-plugin/`
+2. 從該資料夾匯入 `manifest.json`
+3. 書稿仍用倉庫裡的 `data/book-data.json`，或按「從 GitHub 載入書稿」
+
+### 若仍出現 unable to write resource to disk
+
+1. 改用方法 B 的純英文路徑
+2. 完全關閉 Figma 後重開，再重新 Import
+3. 確認匯入資料夾內只有 `manifest.json`、`code.js`、`ui.html` 三個小檔
+4. 不要把整個 Git 倉庫根目錄當成 Plugin 資料夾匯入
+
+## DOCX 更新後重建書稿資料
 
 ```bash
 python3 tools/build_figma_plugin.py
 ```
 
-這會更新：
-
-- `figma-plugin/book-data.json`
-- `figma-plugin/code.js`
-
-請把 DOCX 與上述生成檔案一起提交到 GitHub，確保不同電腦使用同一版本。
+這會更新 `data/book-data.json`。請把 DOCX 與這個 JSON 一起提交到 GitHub。
 
 ## 印刷 PDF
 
-1. 在 Figma 選取所有 `P001`、`P002`…頁面畫框。
-2. 按頁碼順序匯出 PDF。
-3. 在 Acrobat 或印前工具確認頁面尺寸是 152 × 230 mm、字體已嵌入。
-4. 本版本內頁沒有出血圖；如印刷廠要求裁切線或 3 mm 出血，應按印刷廠的
-   拼版規格處理，不要直接放大正文頁面。
+1. 在 Figma 選取 `P001`、`P002`…頁面畫框
+2. 按頁碼順序匯出 PDF
+3. 確認成品為 152 × 230 mm、字體已嵌入、內容為黑白
 
-EPUB 電子書應由 DOCX／結構化書稿另外生成，避免從 Figma PDF 反向轉換而失去
-章節、搜尋及可調字級功能。
+EPUB 應由 DOCX／結構化書稿另外生成，不要從 Figma PDF 反向轉換。

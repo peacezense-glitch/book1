@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""Build the local Figma plugin from the two source DOCX files."""
+"""Build compact book-data.json for the Figma plugin (no oversized embeds)."""
 
 from __future__ import annotations
 
-import base64
 import json
-import mimetypes
 import re
 from pathlib import Path
 from zipfile import ZipFile
@@ -14,6 +12,7 @@ from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_DIR = ROOT / "figma-plugin"
+DATA_DIR = ROOT / "data"
 MAIN_DOC = ROOT / "《歸源手鏡》.docx"
 BACK_DOC = ROOT / "《歸源手鏡》尾頁.docx"
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -63,35 +62,18 @@ def classify(text: str, in_toc: bool) -> str:
     return "body"
 
 
-def read_media(path: Path) -> list[dict[str, str]]:
-    media: list[dict[str, str]] = []
-    with ZipFile(path) as archive:
-        names = sorted(
-            name for name in archive.namelist() if name.startswith("word/media/")
-        )
-        for name in names:
-            suffix = Path(name).suffix.lower()
-            mime = mimetypes.types_map.get(suffix, "application/octet-stream")
-            media.append(
-                {
-                    "name": Path(name).name,
-                    "mime": mime,
-                    "base64": base64.b64encode(archive.read(name)).decode("ascii"),
-                }
-            )
-    return media
-
-
 def make_data() -> dict:
     paragraphs = read_paragraphs(MAIN_DOC)
     self_preface_indexes = [i for i, text in enumerate(paragraphs) if text == "自序"]
     body_start = self_preface_indexes[1] if len(self_preface_indexes) > 1 else 0
     manuscript = [
-        {
-            "text": text,
-            "kind": classify(text, index < body_start),
-        }
+        {"t": text, "k": classify(text, index < body_start)}
         for index, text in enumerate(paragraphs)
+    ]
+    # Expand to the runtime shape expected by the plugin.
+    runtime = [
+        {"text": item["t"], "kind": item["k"]}
+        for item in manuscript
     ]
     return {
         "title": "歸源手鏡",
@@ -99,9 +81,8 @@ def make_data() -> dict:
         "author": "宏泓道者",
         "isbn": "978-9887-2160-4-9",
         "trim": {"widthMm": 152, "heightMm": 230},
-        "paragraphs": manuscript,
+        "paragraphs": runtime,
         "backMatter": read_paragraphs(BACK_DOC),
-        "backMatterImages": read_media(BACK_DOC),
         "source": {
             "main": MAIN_DOC.name,
             "back": BACK_DOC.name,
@@ -111,27 +92,23 @@ def make_data() -> dict:
 
 
 def main() -> None:
-    for path in (MAIN_DOC, BACK_DOC, PLUGIN_DIR / "plugin.template.js"):
+    for path in (MAIN_DOC, BACK_DOC, PLUGIN_DIR / "code.js", PLUGIN_DIR / "ui.html"):
         if not path.exists():
             raise FileNotFoundError(path)
 
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     data = make_data()
-    encoded = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
-    template = (PLUGIN_DIR / "plugin.template.js").read_text(encoding="utf-8")
-    marker = "/*__BOOK_DATA__*/"
-    if template.count(marker) != 1:
-        raise ValueError(f"Expected exactly one {marker} marker")
-
-    (PLUGIN_DIR / "book-data.json").write_text(
-        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    (PLUGIN_DIR / "code.js").write_text(
-        template.replace(marker, encoded), encoding="utf-8"
+    output = DATA_DIR / "book-data.json"
+    # Compact JSON keeps GitHub fetch / file picker lighter.
+    # Keep this OUT of figma-plugin/ so Figma import stays tiny.
+    output.write_text(
+        json.dumps(data, ensure_ascii=False, separators=(",", ":")) + "\n",
+        encoding="utf-8",
     )
     print(
-        f"Built plugin: {len(data['paragraphs'])} paragraphs, "
+        f"Built {output.relative_to(ROOT)}: {len(data['paragraphs'])} paragraphs, "
         f"{sum(len(p['text']) for p in data['paragraphs']):,} characters, "
-        f"{len(data['backMatterImages'])} embedded images"
+        f"{output.stat().st_size:,} bytes"
     )
 
 

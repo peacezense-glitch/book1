@@ -8,89 +8,259 @@
         font-family: Inter, "Noto Sans TC", sans-serif;
       }
       * { box-sizing: border-box; }
-      body { margin: 0; padding: 20px; color: var(--figma-color-text); }
-      h1 { margin: 0 0 8px; font-size: 18px; }
-      p { margin: 0 0 16px; color: var(--figma-color-text-secondary); font-size: 12px; line-height: 1.55; }
-      label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 600; }
-      input[type="text"] {
+      body {
+        margin: 0;
+        padding: 18px;
+        color: var(--figma-color-text);
+      }
+      h1 { margin: 0 0 6px; font-size: 16px; }
+      p {
+        margin: 0 0 14px;
+        color: var(--figma-color-text-secondary);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      label {
+        display: block;
+        margin: 0 0 6px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      input[type="text"],
+      select {
         width: 100%;
-        height: 36px;
-        margin-bottom: 14px;
+        height: 34px;
+        margin-bottom: 12px;
         padding: 0 10px;
         border: 1px solid var(--figma-color-border);
         border-radius: 6px;
         color: var(--figma-color-text);
         background: var(--figma-color-bg);
       }
-      .check { display: flex; gap: 8px; align-items: flex-start; margin: 2px 0 16px; font-weight: 400; }
+      input[type="file"] {
+        width: 100%;
+        margin-bottom: 12px;
+        font-size: 12px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .check {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin: 0 0 14px;
+        font-size: 12px;
+        font-weight: 400;
+      }
       .spec {
-        padding: 12px;
-        margin-bottom: 16px;
+        padding: 10px 12px;
+        margin-bottom: 14px;
         border: 1px solid var(--figma-color-border);
         border-radius: 8px;
         font-size: 12px;
-        line-height: 1.65;
+        line-height: 1.6;
       }
       button {
-        height: 36px;
-        padding: 0 14px;
+        height: 34px;
         border: 0;
         border-radius: 6px;
         font-weight: 600;
         cursor: pointer;
       }
-      #generate { width: 100%; color: white; background: #0d99ff; }
-      #generate:disabled { opacity: 0.55; cursor: wait; }
-      #close { width: 100%; margin-top: 8px; color: var(--figma-color-text); background: var(--figma-color-bg-secondary); }
-      #status { min-height: 40px; margin-top: 14px; font-size: 12px; line-height: 1.5; }
-      progress { width: 100%; height: 6px; margin-top: 8px; display: none; }
+      #loadRemote,
+      #generate {
+        width: 100%;
+        color: #fff;
+        background: #0d99ff;
+        margin-bottom: 8px;
+      }
+      #generate:disabled,
+      #loadRemote:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      #close {
+        width: 100%;
+        color: var(--figma-color-text);
+        background: var(--figma-color-bg-secondary);
+      }
+      #status {
+        min-height: 48px;
+        margin-top: 12px;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      progress {
+        width: 100%;
+        height: 6px;
+        margin-top: 8px;
+        display: none;
+      }
       .error { color: #f24822; }
       .success { color: #14ae5c; }
     </style>
   </head>
   <body>
-    <h1>《歸源手鏡》直排內頁</h1>
-    <p>從 GitHub 版本的兩份 DOCX 生成可編輯的 Figma 書稿。</p>
+    <h1>《歸源手鏡》直排生成器</h1>
+    <p>
+      Plugin 本體已精簡（約 20KB）。請載入倉庫中的
+      <code>data/book-data.json</code>，或從 GitHub 下載。
+    </p>
+
+    <label for="file">本機 data/book-data.json</label>
+    <input id="file" type="file" accept=".json,application/json" />
+
+    <button id="loadRemote">從 GitHub 載入書稿</button>
 
     <label for="target">Figma 頁面名稱</label>
     <input id="target" type="text" value="book3 page" />
 
-    <label class="check">
-      <input id="replace" type="checkbox" checked />
-      <span>重新生成時移除上一個「歸源手鏡・內頁」區段</span>
-    </label>
+    <label for="scope">生成範圍</label>
+    <select id="scope">
+      <option value="sample">樣本（約前 80 段，建議先試）</option>
+      <option value="front">前頁＋目錄</option>
+    </select>
 
-    <div class="spec">
-      成品：152 × 230 mm<br />
-      排版：繁體中文直排、由右至左<br />
-      印刷：純黑文字、白底、無彩色內頁<br />
-      結構：半書名、書名、目錄、正文、篇章頁、版權尾頁
+    <div class="row">
+      <div>
+        <label for="startPage">起始頁碼</label>
+        <input id="startPage" type="text" value="1" />
+      </div>
+      <div>
+        <label class="check" style="margin-top: 22px;">
+          <input id="replace" type="checkbox" checked />
+          <span>覆蓋同名區段</span>
+        </label>
+      </div>
     </div>
 
-    <button id="generate">生成完整內頁</button>
+    <div class="spec">
+      152 × 230 mm　｜　繁體直排　｜　黑白內頁<br />
+      建議先生成「樣本」，確認字體與版面後再分卷生成。
+    </div>
+
+    <button id="generate" disabled>生成到 Figma</button>
     <button id="close">關閉</button>
     <progress id="progress" max="100" value="0"></progress>
-    <div id="status">完整書稿頁數較多，生成期間請保持 Figma 開啟。</div>
+    <div id="status">尚未載入書稿。</div>
 
     <script>
+      const DEFAULT_DATA_URL =
+        "https://raw.githubusercontent.com/peacezense-glitch/book1/cursor/vertical-chinese-book-a8d8/data/book-data.json";
+
+      const fileInput = document.getElementById("file");
+      const loadRemote = document.getElementById("loadRemote");
       const generate = document.getElementById("generate");
       const close = document.getElementById("close");
       const progress = document.getElementById("progress");
       const status = document.getElementById("status");
+      const scope = document.getElementById("scope");
+
+      let book = null;
+
+      function setStatus(text, className) {
+        status.className = className || "";
+        status.textContent = text;
+      }
+
+      function fillVolumes(volumes) {
+        const current = scope.value;
+        scope.innerHTML = "";
+        const options = [
+          ["sample", "樣本（約前 80 段，建議先試）"],
+          ["front", "前頁＋目錄"],
+          ...volumes.map((title) => [`volume:${title}`, title]),
+          ["back", "版權尾頁"]
+        ];
+        for (const [value, label] of options) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          scope.appendChild(option);
+        }
+        scope.value = options.some((item) => item[0] === current)
+          ? current
+          : "sample";
+      }
+
+      function acceptBook(nextBook, sourceLabel) {
+        if (!nextBook || !Array.isArray(nextBook.paragraphs)) {
+          throw new Error("JSON 格式不正確：缺少 paragraphs。");
+        }
+        book = nextBook;
+        const volumes = nextBook.paragraphs
+          .filter((item) => item.kind === "volume")
+          .map((item) => item.text);
+        fillVolumes(volumes);
+        generate.disabled = false;
+        setStatus(
+          `已載入：${sourceLabel}（${nextBook.paragraphs.length} 段）。可先生成樣本。`,
+          "success"
+        );
+      }
+
+      fileInput.onchange = async () => {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          acceptBook(JSON.parse(text), file.name);
+        } catch (error) {
+          generate.disabled = true;
+          setStatus(
+            `載入失敗：${error instanceof Error ? error.message : String(error)}`,
+            "error"
+          );
+        }
+      };
+
+      loadRemote.onclick = async () => {
+        loadRemote.disabled = true;
+        setStatus("正在從 GitHub 下載書稿……");
+        try {
+          const response = await fetch(DEFAULT_DATA_URL);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          acceptBook(await response.json(), "GitHub");
+        } catch (error) {
+          setStatus(
+            `GitHub 載入失敗：${error instanceof Error ? error.message : String(error)}。請改用本機 book-data.json。`,
+            "error"
+          );
+        } finally {
+          loadRemote.disabled = false;
+        }
+      };
 
       generate.onclick = () => {
+        if (!book) {
+          setStatus("請先載入書稿。", "error");
+          return;
+        }
         generate.disabled = true;
         progress.style.display = "block";
         progress.value = 0;
-        status.className = "";
-        status.textContent = "正在準備書稿……";
-        parent.postMessage({
-          pluginMessage: {
-            type: "generate",
-            targetName: document.getElementById("target").value,
-            replace: document.getElementById("replace").checked
-          }
-        }, "*");
+        setStatus("正在生成……");
+        const selected = scope.options[scope.selectedIndex];
+        parent.postMessage(
+          {
+            pluginMessage: {
+              type: "generate",
+              book,
+              targetName: document.getElementById("target").value,
+              scope: scope.value,
+              scopeLabel: selected ? selected.textContent : scope.value,
+              replace: document.getElementById("replace").checked,
+              startPageNumber:
+                Number(document.getElementById("startPage").value) || 1
+            }
+          },
+          "*"
+        );
       };
 
       close.onclick = () => {
@@ -103,18 +273,18 @@
         if (message.type === "progress") {
           progress.max = message.total;
           progress.value = message.current;
-          status.textContent = `正在生成第 ${message.current} / ${message.total} 頁……`;
+          setStatus(`正在生成第 ${message.current} / ${message.total} 頁……`);
         }
         if (message.type === "done") {
           generate.disabled = false;
-          status.className = "success";
-          status.textContent =
-            `完成：${message.pages} 頁，位於「${message.targetPage}」，字體為 ${message.font}。`;
+          setStatus(
+            `完成：${message.pages} 頁，區段「${message.sectionName}」，字體 ${message.font}。`,
+            "success"
+          );
         }
         if (message.type === "error") {
           generate.disabled = false;
-          status.className = "error";
-          status.textContent = `生成失敗：${message.message}`;
+          setStatus(`生成失敗：${message.message}`, "error");
         }
       };
     </script>
