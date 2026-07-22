@@ -14,7 +14,7 @@
 - **正文：10.5 pt／行距 14.7**；15 欄 × 32 字；篇章／卷標題更大
 - 標點：直接寫在正文欄（無獨立標點 layer）
 - 小標題／副標題：**前留一空欄，後直接接正文**
-- 目錄：去掉 `·` 項目符號，卷／章條目以**粗體**層級呈現
+- 目錄：對齊原 Test Book — **卷／自序／附錄粗體頂格**；**章節細體＋頂端縮進**；無 `·`
 - MCP 排版：載入 `book-data-carrier.png` **一次排完全書**
 - ebook／分頁計畫：`data/book-data.json`、`data/pages-plan.json`、`book-data-carrier.png`
 
