@@ -1,9 +1,9 @@
 /**
- * Vertical typesetting metrics + punctuation optical centering for Figma.
+ * Vertical typesetting metrics for Figma (match Test Book 2).
  *
- * 行距 (column pitch) = cp, NOT glyph width cw.
- * 標點置中: CENTER_PUNCT glyphs are placed in a punct overlay layer,
- * optically nudged; the body column uses ideographic space 　 in those slots.
+ * 行距 (column pitch) = cp 21.55, NOT glyph width cw.
+ * 標點: 直式符號（︐︒…）寫在正文欄內；textAlign H+V = CENTER；
+ * 無獨立標點層。
  */
 module.exports = {
   rows: 32,
@@ -15,45 +15,7 @@ module.exports = {
   bindingMm: 18,
   outerMm: 15,
   trimMm: { w: 152, h: 230 },
-  centerPunct: ["，", "。", "、", "：", "；", "！", "？", "︐", "︒", "︑", "︓", "︔", "︕", "︖"],
-  punctOptical: {
-    "︐": [-0.26, 0.28],
-    "︒": [-0.26, 0.28],
-    "︑": [-0.26, 0.28],
-    "︓": [-0.22, 0.18],
-    "︔": [-0.22, 0.22],
-    "︕": [-0.18, 0.12],
-    "︖": [-0.18, 0.12],
-  },
-  verticalForms: {
-    "，": "︐",
-    "、": "︑",
-    "。": "︒",
-    "：": "︓",
-    "；": "︔",
-    "！": "︕",
-    "？": "︖",
-    "「": "﹁",
-    "」": "﹂",
-    "『": "﹃",
-    "』": "﹄",
-    "（": "︵",
-    "）": "︶",
-    "【": "︻",
-    "】": "︼",
-    "《": "︽",
-    "》": "︾",
-    "〈": "︿",
-    "〉": "﹀",
-    "〔": "︹",
-    "〕": "︺",
-    "［": "﹇",
-    "］": "﹈",
-    "—": "︱",
-    "─": "︱",
-    "－": "︱",
-    "–": "︱",
-    "…": "︙",
-    "·": "・",
-  },
+  textAlignHorizontal: "CENTER",
+  textAlignVertical: "CENTER",
+  punctMode: "inline-vertical-forms",
 };
