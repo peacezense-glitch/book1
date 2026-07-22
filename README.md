@@ -7,8 +7,9 @@
 - 帳號：`uxuimno@gmail.com`（Pro）
 - 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=102-135)
 - 頁面：`Test Book`
-- 已生成：樣本內頁（半書名／書名／自序）與總目錄
+- 已生成：前頁、總目錄、自序、第一卷序言與第一～二章（約至 P033）
 - 規格：152 × 230 mm、繁體直排、黑白、Noto Serif TC
+- 標點：直排字元（︐︒︓﹁﹂︽︾ 等），不再使用幾何圖形疊加
 
 ## 規格
 
