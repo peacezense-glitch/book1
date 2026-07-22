@@ -57,13 +57,8 @@ ARABIC_LIST_HEAD_RE = re.compile(r"^\d+\.\s*")
 BOOK_TITLE_RE = re.compile(r"^︽.+︾$")
 
 VERTICAL_FORMS = {
-    "，": "︐",
-    "、": "︑",
-    "。": "︒",
-    "：": "︓",
-    "；": "︔",
-    "！": "︕",
-    "？": "︖",
+    # Comma/period/colon stay fullwidth (Test Book 2): they center in the cell.
+    # Brackets use vertical presentation forms.
     "「": "﹁",
     "」": "﹂",
     "『": "﹃",
