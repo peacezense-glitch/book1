@@ -45,6 +45,19 @@ STYLE = {
     "subtitle": "2",
     "spacer": "3",
     "pad": "4",
+    "toc_bold": "5",  # TOC volume/title — Bold 11
+    "toc_reg": "6",  # TOC chapter — Regular 11 + indent
+    "sign": "7",  # 落款署名 — Bold 12
+    "sign_date": "8",  # 落款年月 — Regular 10.5, deeper indent
+}
+FONT_SIZE = {
+    "0": 10.5,
+    "1": 10.5,
+    "2": 10.5,
+    "5": 11,
+    "6": 11,
+    "7": 12,
+    "8": 10.5,
 }
 
 
@@ -100,6 +113,14 @@ def build_items(book: dict) -> list[dict]:
             items.append({"kind": "heading", "text": text})
         elif is_tip(paragraph["text"]):
             items.append({"kind": "subtitle", "text": text})
+        elif "謹識" in text:
+            # Classical 落款: split name / date for designed signature.
+            match = re.match(r"^(.+謹識)(.+)$", text)
+            if match:
+                items.append({"kind": "signature_name", "text": match.group(1)})
+                items.append({"kind": "signature_date", "text": match.group(2)})
+            else:
+                items.append({"kind": "signature_name", "text": text})
         else:
             items.append({"kind": "body", "text": text})
 
@@ -157,8 +178,8 @@ def paginate(items: list[dict]) -> list[dict]:
             style = {
                 "subtitle": "subtitle",
                 "heading": "heading",
-                "toc_title": "heading",
-                "toc_volume": "heading",
+                "toc_title": "toc_bold",
+                "toc_volume": "toc_bold",
             }[kind]
             chars = vert(list(item["text"]))
             need = ROWS + max(len(chars), 1)
@@ -173,15 +194,39 @@ def paginate(items: list[dict]) -> list[dict]:
             while len(buf) % ROWS:
                 buf.append({"c": "", "s": "pad"})
         elif kind == "toc_entry":
-            # Regular weight + top indent (like Test Book), no · bullets.
+            # Regular weight + top indent (like Test Book), 11pt, no · bullets.
             chars = vert(list(item["text"]))
             ensure_column_break()
             for _ in range(2):  # 頂端縮兩格
                 buf.append({"c": "", "s": "pad"})
             for ch in chars:
-                buf.append({"c": ch, "s": "body"})
+                buf.append({"c": ch, "s": "toc_reg"})
             while len(buf) % ROWS:
                 buf.append({"c": "", "s": "pad"})
+        elif kind == "signature_name":
+            # 落款：前空一欄，署名粗體稍大，略縮頂。
+            chars = vert(list(item["text"]))
+            if buf:
+                add_blank_column()
+            ensure_column_break()
+            for _ in range(6):
+                buf.append({"c": "", "s": "pad"})
+            for ch in chars:
+                buf.append({"c": ch, "s": "sign"})
+            while len(buf) % ROWS:
+                buf.append({"c": "", "s": "pad"})
+        elif kind == "signature_date":
+            # 年月再縮深一層，細體，與署名形成落款節奏。
+            chars = vert(list(item["text"]))
+            ensure_column_break()
+            for _ in range(10):
+                buf.append({"c": "", "s": "pad"})
+            for ch in chars:
+                buf.append({"c": ch, "s": "sign_date"})
+            while len(buf) % ROWS:
+                buf.append({"c": "", "s": "pad"})
+            # Air after 落款 before following matter.
+            add_blank_column()
         else:
             for ch in vert(list(item["text"])):
                 buf.append({"c": ch, "s": "body"})
@@ -233,6 +278,11 @@ def compact_pages(pages: list[dict]) -> list[dict]:
                 entry = {"i": col, "c": chars, "s": style}
                 if indent:
                     entry["d"] = indent
+                # Attach font size when not default body 10.5
+                sample_style = style[0] if style else "0"
+                fs = FONT_SIZE.get(sample_style, 10.5)
+                if fs != 10.5:
+                    entry["fs"] = fs
                 cols.append(entry)
             compact.append({"n": page_num, "t": "p", "cols": cols})
     return compact
@@ -297,6 +347,7 @@ def main() -> None:
             "rows": ROWS,
             "cols": COLS,
             "fs": 10.5,
+            "tocFs": 11,
             "lh": 14.7,
             "cp": 21.55,
             "cw": 13.125,
