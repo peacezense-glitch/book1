@@ -1,7 +1,14 @@
 # 《歸源手鏡》書籍製作
 
-本倉庫保存兩份原始 DOCX，以及可在 Figma Desktop 本機執行的直排書籍
-Plugin。任何電腦只要取得這個 GitHub 倉庫，都能重新生成同一版本的書稿。
+本倉庫保存兩份原始 DOCX、結構化書稿資料，以及可在 Figma Desktop 本機執行的直排書籍 Plugin。任何電腦只要取得這個 GitHub 倉庫，都能重新生成同一版本的書稿。
+
+## 目前 Figma 輸出
+
+- 帳號：`uxuimno@gmail.com`（Pro）
+- 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=102-135)
+- 頁面：`Test Book`
+- 已生成：樣本內頁（半書名／書名／自序）與總目錄
+- 規格：152 × 230 mm、繁體直排、黑白、Noto Serif TC
 
 ## 規格
 
