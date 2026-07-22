@@ -15,12 +15,12 @@ const VERTICAL_FORMS = {
   "…": "︙", "·": "・"
 };
 
-// Punctuation that must be H+V optically centered in the cell (print).
-// Ebook keeps standard forms in data/book-data.json; Figma uses these glyphs as TEXT.
+// Centered punctuation: geometric vector marks at cell center (no font side-bearings).
+// Direct page children — no 標點層. Body cells hold ideographic space.
 const CENTER_PUNCT = new Set(["，", "。", "、", "：", "；", "！", "？", "︐", "︒", "︑", "︓", "︔", "︕", "︖"]);
-const PUNCT_OPTICAL = {
-  "︐": [-0.26, 0.28], "︒": [-0.26, 0.28], "︑": [-0.26, 0.28],
-  "︓": [-0.22, 0.18], "︔": [-0.22, 0.22], "︕": [-0.18, 0.12], "︖": [-0.18, 0.12]
+const PUNCT_NAME = {
+  "，": "︐", "。": "︒", "、": "︑", "：": "︓", "；": "︔", "！": "︕", "？": "︖",
+  "︐": "︐", "︒": "︒", "︑": "︑", "︓": "︓", "︔": "︔", "︕": "︕", "︖": "︖"
 };
 
 figma.showUI(__html__, { width: 400, height: 620, themeColors: true });
@@ -186,19 +186,94 @@ function makeFrame(section, pageNumber, pageW, pageH, startY) {
   return frame;
 }
 
-function placeCenteredPunct(layer, glyph, fontName, fontSize, cellX, cellY, cellW, cellH) {
-  const node = figma.createText();
-  layer.appendChild(node);
-  node.fontName = fontName;
-  node.characters = glyph;
-  node.fontSize = fontSize;
-  node.fills = [{ type: "SOLID", color: BLACK }];
-  node.textAutoResize = "WIDTH_AND_HEIGHT";
-  const [dx, dy] = PUNCT_OPTICAL[glyph] || [-0.26, 0.28];
-  node.x = cellX + (cellW - node.width) / 2 + dx * cellW;
-  node.y = cellY + (cellH - node.height) / 2 + dy * cellH;
-  node.name = glyph;
-  return node;
+function placeCenteredPunct(parent, glyph, _fontName, _fontSize, cellX, cellY, cellW, cellH) {
+  const name = PUNCT_NAME[glyph] || glyph;
+  const fill = [{ type: "SOLID", color: BLACK }];
+  const nodes = [];
+
+  const period = () => {
+    const r = Math.min(cellW, cellH) * 0.12;
+    const el = figma.createEllipse();
+    parent.appendChild(el);
+    el.resize(r * 2, r * 2);
+    el.x = cellX + cellW / 2 - r;
+    el.y = cellY + cellH / 2 - r;
+    el.fills = fill;
+    el.name = name;
+    nodes.push(el);
+  };
+
+  const comma = () => {
+    const w = cellW * 0.16;
+    const h = cellH * 0.32;
+    const node = figma.createRectangle();
+    parent.appendChild(node);
+    node.resize(w, h);
+    node.cornerRadius = w / 2;
+    node.x = cellX + cellW / 2 - w / 2;
+    node.y = cellY + cellH / 2 - h / 2;
+    node.fills = fill;
+    node.name = name;
+    nodes.push(node);
+  };
+
+  const colon = () => {
+    const r = Math.min(cellW, cellH) * 0.095;
+    const gap = cellH * 0.15;
+    for (const sign of [-1, 1]) {
+      const el = figma.createEllipse();
+      parent.appendChild(el);
+      el.resize(r * 2, r * 2);
+      el.x = cellX + cellW / 2 - r;
+      el.y = cellY + cellH / 2 - r + sign * gap;
+      el.fills = fill;
+      el.name = name;
+      nodes.push(el);
+    }
+  };
+
+  const bang = () => {
+    const barW = cellW * 0.14;
+    const barH = cellH * 0.42;
+    const bar = figma.createRectangle();
+    parent.appendChild(bar);
+    bar.resize(barW, barH);
+    bar.cornerRadius = barW / 2;
+    bar.x = cellX + cellW / 2 - barW / 2;
+    bar.y = cellY + cellH * 0.18;
+    bar.fills = fill;
+    bar.name = name;
+    nodes.push(bar);
+    const r = Math.min(cellW, cellH) * 0.09;
+    const el = figma.createEllipse();
+    parent.appendChild(el);
+    el.resize(r * 2, r * 2);
+    el.x = cellX + cellW / 2 - r;
+    el.y = cellY + cellH * 0.72;
+    el.fills = fill;
+    el.name = name;
+    nodes.push(el);
+  };
+
+  if (name === "︒") period();
+  else if (name === "︐" || name === "︑") comma();
+  else if (name === "︓") colon();
+  else if (name === "︔") {
+    const r = Math.min(cellW, cellH) * 0.09;
+    const el = figma.createEllipse();
+    parent.appendChild(el);
+    el.resize(r * 2, r * 2);
+    el.x = cellX + cellW / 2 - r;
+    el.y = cellY + cellH * 0.32 - r;
+    el.fills = fill;
+    el.name = name;
+    nodes.push(el);
+    comma();
+    nodes[nodes.length - 1].y = cellY + cellH * 0.55;
+  } else if (name === "︕" || name === "︖") bang();
+  else period();
+
+  return nodes[0];
 }
 
 function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
@@ -212,15 +287,6 @@ function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
   const colWidth = 13.125;
   const rightMargin = isOdd ? outer : inner;
   const rightEdge = pageW - rightMargin - colWidth;
-  const punctLayer = figma.createFrame();
-  frame.appendChild(punctLayer);
-  punctLayer.name = "標點層・字符置中";
-  punctLayer.resize(pageW, pageH);
-  punctLayer.x = 0;
-  punctLayer.y = 0;
-  punctLayer.fills = [];
-  punctLayer.clipsContent = false;
-
   for (let column = 0; column < COLS; column += 1) {
     const characters = page.content.slice(column * ROWS, (column + 1) * ROWS);
     if (!characters.length) continue;
@@ -230,8 +296,9 @@ function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
       const character = characters[row];
       if (CENTER_PUNCT.has(character)) {
         const glyph = VERTICAL_FORMS[character] || character;
+        // Direct page child — no 標點層 wrapper
         placeCenteredPunct(
-          punctLayer,
+          frame,
           glyph,
           fonts.regular,
           fontSize,
