@@ -224,14 +224,6 @@ function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
     const characters = page.content.slice(column * ROWS, (column + 1) * ROWS);
     if (!characters.length) continue;
     const colX = rightEdge - column * columnPitch;
-    const display = characters.map((character) => {
-      if (!CENTER_PUNCT.has(character)) return character;
-      const glyph = VERTICAL_FORMS[character] || character;
-      const row = characters.indexOf(character);
-      return { glyph, row, isPunct: true, raw: character };
-    });
-
-    // Build column text with ideographic-space placeholders for centered punct
     const lines = [];
     for (let row = 0; row < characters.length; row += 1) {
       const character = characters[row];
@@ -260,7 +252,6 @@ function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
       align: "CENTER",
       name: `正文 ${column + 1}`
     });
-    void display;
   }
   addFolio(frame, pageNumber, fonts.regular, pageW, pageH);
 }
