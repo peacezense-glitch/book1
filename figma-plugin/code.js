@@ -1,10 +1,15 @@
 const PT_PER_MM = 72 / 25.4;
-const ROWS = 32;
+const ROWS = 36;
 const COLS = 15;
 const PAGE_CAPACITY = ROWS * COLS;
+const BINDING_MM = 22;
+const OUTER_MM = 13;
+const TOP_MM = 12;
+const BOTTOM_MM = 16;
 const BLACK = { r: 0, g: 0, b: 0 };
 const WHITE = { r: 1, g: 1, b: 1 };
 const GENERATED_SECTION_NAME = "Guiyuan Interior";
+const CN_DIGITS = "〇一二三四五六七八九";
 
 const VERTICAL_FORMS = {
   // Match Test Book 2 / ebook: keep ，。、：；！？ as fullwidth symbols (SEO-searchable).
@@ -17,6 +22,22 @@ const VERTICAL_FORMS = {
 };
 
 figma.showUI(__html__, { width: 400, height: 620, themeColors: true });
+
+function chineseDigits(n) {
+  return String(n)
+    .split("")
+    .map((d) => CN_DIGITS[Number(d)] || d)
+    .join("");
+}
+
+function volumeRunningTitle(text) {
+  const clean = String(text).replace(/[\u3000\s]+/g, "");
+  const vol = clean.match(/^(第.+?卷)([^：:]*?)[：:].+$/);
+  if (vol) return vol[1] + vol[2];
+  const app = clean.match(/^(附錄[一二三四])/);
+  if (app) return app[1];
+  return clean;
+}
 
 function verticalize(text) {
   return Array.from(String(text).replace(/\s+/g, " ")).map(
@@ -113,17 +134,11 @@ function splitRange(book, paragraphs, options) {
 
   if (options.includeBack) {
     if ((pages.length + 1) % 2 === 0) pages.push({ type: "blank" });
-    const backCharacters = verticalize(
-      book.backMatter.map((paragraph) => `　　${paragraph}　`).join("")
-    );
-    const backCapacity = 14 * 40;
-    while (backCharacters.length) {
-      pages.push({
-        type: "colophon",
-        heading: "版權頁",
-        content: backCharacters.splice(0, backCapacity)
-      });
-    }
+    pages.push({
+      type: "colophon",
+      heading: "版權頁",
+      matter: book.backMatter || []
+    });
   }
   return pages;
 }
@@ -154,16 +169,26 @@ function addText(parent, text, fontName, size, x, y, options = {}) {
   return node;
 }
 
-function addFolio(frame, pageNumber, fontName, pageW, pageH) {
-  addText(
-    frame,
-    String(pageNumber),
-    fontName,
-    7.5,
-    pageW / 2 - 10,
-    pageH - 24,
-    { width: 20, height: 12, align: "CENTER", name: "folio" }
-  );
+function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
+  const isOdd = pageNumber % 2 === 1;
+  const outer = OUTER_MM * PT_PER_MM;
+  const top = TOP_MM * PT_PER_MM;
+  const bottom = BOTTOM_MM * PT_PER_MM;
+  const folio = chineseDigits(pageNumber);
+  const label = `${heading || ""}${folio}`;
+  const characters = verticalize(label).join("\n");
+  const lineHeight = 11;
+  const height = Array.from(label).length * lineHeight + 2;
+  const width = 10;
+  const x = isOdd ? pageW - outer + 1.5 : (outer - width) / 2;
+  const y = isOdd ? Math.max(8, top * 0.35) : pageH - bottom - height;
+  addText(frame, characters, fontName, 8, x, y, {
+    lineHeight,
+    width,
+    height,
+    align: "CENTER",
+    name: "卷題頁碼"
+  });
 }
 
 function makeFrame(section, pageNumber, pageW, pageH, startY) {
@@ -184,9 +209,9 @@ function makeFrame(section, pageNumber, pageW, pageH, startY) {
 
 function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
   const isOdd = pageNumber % 2 === 1;
-  const outer = 15 * PT_PER_MM;
-  const inner = 18 * PT_PER_MM;
-  const top = 18 * PT_PER_MM;
+  const outer = OUTER_MM * PT_PER_MM;
+  const inner = BINDING_MM * PT_PER_MM;
+  const top = TOP_MM * PT_PER_MM;
   const fontSize = 10.5;
   const lineHeight = 14.7;
   const columnPitch = 21.55;
@@ -208,14 +233,21 @@ function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
       name: `正文 ${column + 1}`
     });
   }
-  addFolio(frame, pageNumber, fonts.regular, pageW, pageH);
+  addRunningHead(
+    frame,
+    page.heading || "正文",
+    pageNumber,
+    pageW,
+    pageH,
+    fonts.regular
+  );
 }
 
 function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
   const characters = verticalize(page.heading);
   const chunks = [];
   while (characters.length) chunks.push(characters.splice(0, 18));
-  const startX = pageW - 105;
+  const startX = pageW - BINDING_MM * PT_PER_MM - 70;
   for (let index = 0; index < chunks.length; index += 1) {
     addText(
       frame,
@@ -223,11 +255,11 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
       fonts.bold,
       page.level === "volume" ? 18 : 15,
       startX - index * 37,
-      82,
+      70,
       {
         lineHeight: page.level === "volume" ? 27 : 23,
         width: 28,
-        height: 490,
+        height: 520,
         align: "CENTER",
         name: "opener"
       }
@@ -238,9 +270,16 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
   rule.name = "rule";
   rule.resize(0.7, 230);
   rule.x = startX + 45;
-  rule.y = 96;
+  rule.y = 84;
   rule.fills = [{ type: "SOLID", color: BLACK }];
-  addFolio(frame, pageNumber, fonts.regular, pageW, pageH);
+  addRunningHead(
+    frame,
+    volumeRunningTitle(page.heading),
+    pageNumber,
+    pageW,
+    pageH,
+    fonts.regular
+  );
 }
 
 function renderHalfTitle(frame, book, fonts, pageW) {
@@ -277,32 +316,62 @@ function renderTitle(frame, book, fonts, pageW) {
 }
 
 function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
-  const rows = 40;
-  const columns = 14;
-  const fontSize = 7.5;
-  const lineHeight = 12.2;
-  const pitch = 16.5;
-  const rightEdge = pageW - 48;
-  for (let column = 0; column < columns; column += 1) {
-    const characters = page.content.slice(column * rows, (column + 1) * rows);
-    if (!characters.length) continue;
-    addText(
-      frame,
-      characters.join("\n"),
-      fonts.regular,
-      fontSize,
-      rightEdge - column * pitch,
-      48,
-      {
-        lineHeight,
-        width: 11,
-        height: rows * lineHeight + 2,
-        align: "CENTER",
-        name: `colophon-${column + 1}`
-      }
-    );
+  // Traditional: only the copyright page is horizontal (English-heavy).
+  const matter = Array.isArray(page.matter) ? page.matter : [];
+  const marginX = 28;
+  const contentW = pageW - marginX * 2;
+  let y = 36;
+  const title = matter[0] || "《歸源手鏡》";
+  addText(frame, title, fonts.bold, 16, marginX, y, {
+    width: contentW,
+    height: 28,
+    align: "CENTER",
+    name: "colophon-title"
+  });
+  y += 36;
+  const metaLines = matter.slice(1, 8);
+  for (const line of metaLines) {
+    addText(frame, line, fonts.regular, 9, marginX, y, {
+      width: contentW,
+      height: 16,
+      align: "LEFT",
+      name: "colophon-meta"
+    });
+    y += 15;
   }
-  addFolio(frame, pageNumber, fonts.regular, pageW, pageH);
+  y += 10;
+  const centerLines = matter.slice(8, 18);
+  for (const line of centerLines) {
+    addText(frame, line, fonts.regular, 8.5, marginX, y, {
+      width: contentW,
+      height: 14,
+      align: "LEFT",
+      name: "colophon-center"
+    });
+    y += 13;
+  }
+  y += 8;
+  const pubLines = matter.slice(18, 25);
+  for (const line of pubLines) {
+    addText(frame, line, fonts.regular, 8.5, marginX, y, {
+      width: contentW,
+      height: 14,
+      align: "LEFT",
+      name: "colophon-pub"
+    });
+    y += 13;
+  }
+  y = Math.max(y + 8, pageH - 120);
+  const legal = matter.slice(25);
+  for (const line of legal) {
+    addText(frame, line, fonts.regular, 7, marginX, y, {
+      width: contentW,
+      height: 28,
+      align: "LEFT",
+      name: "colophon-legal"
+    });
+    y += 26;
+  }
 }
 
 function selectParagraphs(book, scope) {

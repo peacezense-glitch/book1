@@ -17,9 +17,14 @@ import struct
 import zlib
 from pathlib import Path
 
-ROWS = 32
+# Test Book 4: taller text block (36 rows) with wider binding gutter.
+ROWS = 36
 COLS = 15
 CAP = ROWS * COLS
+BINDING_MM = 22
+OUTER_MM = 13
+TOP_MM = 12
+BOTTOM_MM = 16
 
 # Editorial / manuscript labels — never appear in the printed book.
 LABEL_RE = re.compile(
@@ -331,19 +336,26 @@ def build_items(book: dict) -> list[dict]:
         else:
             items.append(classified)
 
-    items.append(
-        {
-            "kind": "opener",
-            "level": "chapter",
-            "text": "版權頁",
-            "lines": ["版權頁"],
-        }
-    )
-    for line in book.get("backMatter", []):
-        text = strip_spaces(line if isinstance(line, str) else str(line))
-        if text:
-            items.append({"kind": "body", "text": text})
+    # Colophon is horizontal (Test Book 4); not paginated as vertical body.
     return items
+
+
+def volume_running_title(text: str) -> str:
+    """Compact 卷題 for outer running heads (drop long subtitle after ：)."""
+    text = strip_spaces(text)
+    match = re.match(r"^(第.+?卷)([^：:]*?)[：:].+$", text)
+    if match:
+        return match.group(1) + match.group(2)
+    match = re.match(r"^(附錄[一二三四])", text)
+    if match:
+        return match.group(1)
+    return text
+
+
+def chinese_digits(n: int) -> str:
+    """Page folio as digit-wise Chinese numerals (五二 for 52)."""
+    table = "〇一二三四五六七八九"
+    return "".join(table[int(ch)] for ch in str(n))
 
 
 def paginate(items: list[dict]) -> list[dict]:
@@ -502,23 +514,41 @@ def paginate(items: list[dict]) -> list[dict]:
     return pages
 
 
-def compact_pages(pages: list[dict]) -> list[dict]:
+def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> list[dict]:
     compact: list[dict] = []
+    running = "總目錄"
     for index, page in enumerate(pages):
         page_num = index + 1
         if page["type"] == "opener":
+            level = page.get("level", "chapter")
+            text = page["text"]
+            if level == "volume":
+                running = volume_running_title(text)
+            elif level == "major":
+                running = strip_spaces(text) or "自序"
+            elif strip_spaces(text).startswith("附錄"):
+                running = volume_running_title(text)
             lines = page.get("lines") or split_opener(page["text"])
             compact.append(
                 {
                     "n": page_num,
                     "t": "o",
-                    "lv": page.get("level", "chapter"),
+                    "lv": level,
                     "tx": page["text"],
                     "ln": lines,  # semantic vertical columns for designed 断行
+                    "vh": running,
+                    "fo": chinese_digits(page_num),
                 }
             )
         elif page["type"] == "blank":
-            compact.append({"n": page_num, "t": "b"})
+            compact.append(
+                {
+                    "n": page_num,
+                    "t": "b",
+                    "vh": running,
+                    "fo": chinese_digits(page_num),
+                }
+            )
         else:
             cols = []
             for col in range(COLS):
@@ -545,8 +575,36 @@ def compact_pages(pages: list[dict]) -> list[dict]:
                 if fs != 10.5:
                     entry["fs"] = fs
                 cols.append(entry)
-            compact.append({"n": page_num, "t": "p", "cols": cols})
+            compact.append(
+                {
+                    "n": page_num,
+                    "t": "p",
+                    "cols": cols,
+                    "vh": running,
+                    "fo": chinese_digits(page_num),
+                }
+            )
     return compact
+
+
+def build_colophon_page(book: dict, page_num: int) -> dict:
+    """Horizontal copyright page payload (traditional: only this page is 橫排)."""
+    matter = [
+        strip_spaces(line if isinstance(line, str) else str(line))
+        for line in book.get("backMatter", [])
+    ]
+    matter = [line for line in matter if line]
+    return {
+        "n": page_num,
+        "t": "c",
+        "vh": "版權頁",
+        "fo": chinese_digits(page_num),
+        "title": book.get("title", "歸源手鏡"),
+        "series": book.get("series", ""),
+        "author": book.get("author", ""),
+        "isbn": book.get("isbn", ""),
+        "matter": matter,
+    }
 
 
 def png_chunk(tag: bytes, data: bytes) -> bytes:
@@ -590,7 +648,21 @@ def main() -> None:
     book = json.loads(args.book.read_text(encoding="utf-8"))
     items = build_items(book)
     pages = paginate(items)
-    compact = compact_pages(pages)
+    compact = compact_pages(pages, book_title=book.get("title", "歸源手鏡"))
+    # Horizontal colophon on the next page after body (odd/right preferred).
+    next_n = (compact[-1]["n"] + 1) if compact else 1
+    if next_n % 2 == 0:
+        # Keep 版權頁 on the right (odd) leaf when possible.
+        compact.append(
+            {
+                "n": next_n,
+                "t": "b",
+                "vh": "版權頁",
+                "fo": chinese_digits(next_n),
+            }
+        )
+        next_n += 1
+    compact.append(build_colophon_page(book, next_n))
     plan = {
         "meta": {
             "rows": ROWS,
@@ -605,8 +677,15 @@ def main() -> None:
             "lh": 14.7,
             "cp": 21.55,
             "cw": 13.125,
+            "bindingMm": BINDING_MM,
+            "outerMm": OUTER_MM,
+            "topMm": TOP_MM,
+            "bottomMm": BOTTOM_MM,
             "pages": len(compact),
             "binding": "rtl-odd-right",
+            "runningHead": "volume-outer",
+            "colophon": "horizontal",
+            "edition": "test-book-4",
         },
         "pages": compact,
     }
