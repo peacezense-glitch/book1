@@ -589,11 +589,12 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
 
 def build_colophon_page(book: dict, page_num: int) -> dict:
     """Horizontal copyright page payload (traditional: only this page is 橫排)."""
-    matter = [
-        strip_spaces(line if isinstance(line, str) else str(line))
-        for line in book.get("backMatter", [])
-    ]
-    matter = [line for line in matter if line]
+    # Keep original spacing — English needs spaces (unlike vertical body).
+    matter = []
+    for line in book.get("backMatter", []):
+        text = (line if isinstance(line, str) else str(line)).strip()
+        if text:
+            matter.append(text)
     return {
         "n": page_num,
         "t": "c",
