@@ -187,20 +187,18 @@ function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
   const folioChars = Array.from(folio);
   const titleH = Math.max(titleChars.length, 1) * lineHeight + 2;
   const folioH = Math.max(folioChars.length, 1) * lineHeight + 2;
-  const totalH = titleH + gapFolio + folioH;
-  // Both sides share the same vertical center (水平置中).
-  const startY = (pageH - totalH) / 2;
+  // Gap straddles page midline so both sides share the same horizontal band.
+  const titleY = pageH / 2 - gapFolio / 2 - titleH;
+  const folioY = pageH / 2 + gapFolio / 2;
   const textBlockW = (COLS - 1) * 21.55 + 13.125;
   let x;
   if (isOdd) {
-    const bodyOuter = pageW - outer;
-    x = bodyOuter + gapBody;
+    x = pageW - outer + gapBody;
   } else {
-    const bodyOuter = pageW - inner - textBlockW;
-    x = bodyOuter - gapBody - width;
+    x = pageW - inner - textBlockW - gapBody - width;
   }
   if (titleChars.length) {
-    addText(frame, titleChars.join("\n"), fontName, 8, x, startY, {
+    addText(frame, titleChars.join("\n"), fontName, 8, x, titleY, {
       lineHeight,
       width,
       height: titleH,
@@ -208,21 +206,13 @@ function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
       name: "卷題"
     });
   }
-  addText(
-    frame,
-    folioChars.join("\n"),
-    fontName,
-    8,
-    x,
-    startY + titleH + gapFolio,
-    {
-      lineHeight,
-      width,
-      height: folioH,
-      align: "CENTER",
-      name: "頁碼"
-    }
-  );
+  addText(frame, folioChars.join("\n"), fontName, 8, x, folioY, {
+    lineHeight,
+    width,
+    height: folioH,
+    align: "CENTER",
+    name: "頁碼"
+  });
 }
 
 function makeFrame(section, pageNumber, pageW, pageH, startY) {
@@ -293,26 +283,46 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
   const startX = pageW - BINDING_MM * PT_PER_MM - 70;
   let tallest = 0;
   for (let index = 0; index < lines.length; index += 1) {
-    const chars = Array.from(String(lines[index]));
+    let chars = Array.from(String(lines[index]));
     if (!chars.length) continue;
+    let colon = null;
+    const last = chars[chars.length - 1];
+    if (last === "：" || last === ":" || last === "︓") {
+      colon = "：";
+      chars = chars.slice(0, -1);
+    }
     const height = chars.length * lh + 2;
-    tallest = Math.max(tallest, height);
-    addText(
-      frame,
-      chars.join("\n"),
-      fonts.bold,
-      fs,
-      startX - index * 37,
-      openerTop,
-      {
+    tallest = Math.max(tallest, height + (colon ? lh : 0));
+    const colX = startX - index * 37;
+    if (chars.length) {
+      addText(frame, chars.join("\n"), fonts.bold, fs, colX, openerTop, {
         lineHeight: lh,
         width: 28,
         height,
         align: "CENTER",
         alignVertical: "TOP",
         name: "opener"
-      }
-    );
+      });
+    }
+    if (colon) {
+      // Own cell so fullwidth ： is horizontally centered in the column.
+      addText(
+        frame,
+        colon,
+        fonts.bold,
+        fs,
+        colX,
+        openerTop + chars.length * lh,
+        {
+          lineHeight: lh,
+          width: 28,
+          height: lh + 2,
+          align: "CENTER",
+          alignVertical: "CENTER",
+          name: "opener-colon"
+        }
+      );
+    }
   }
   const rule = figma.createRectangle();
   frame.appendChild(rule);
@@ -414,6 +424,7 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
   const legal = matter.slice(25);
   const legalHeights = legal.map((line) => (line.length > 60 ? 36 : 18));
   const legalBlock = legalHeights.reduce((sum, h) => sum + h + 2, 0);
+  const bottomPad = 22 * PT_PER_MM; // keep disclaimer clear of the trim
   y = Math.min(y + 10, pageH - bottomPad - legalBlock);
   for (let i = 0; i < legal.length; i += 1) {
     const h = legalHeights[i];
