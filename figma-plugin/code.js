@@ -349,43 +349,62 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
 }
 
 function renderTitleCard(frame, page, pageNumber, fonts, pageW, pageH) {
-  // Unique post-preface book title leaf — vertical, centered, airy.
+  // Unique post-preface book title leaf — no running head, double rule, vertically centered.
   const title = String(page.title || page.tx || "");
   const subtitle = String(page.sub || page.subtitle || "");
-  const top = 28 * PT_PER_MM;
-  const titleFs = 17;
-  const titleLh = 26;
+  const titleFs = 18;
+  const titleLh = 28;
   const subFs = 11;
-  const subLh = 17;
-  const colW = 26;
-  const pitch = 34;
+  const subLh = 18;
+  const colW = 28;
+  const pitch = 40;
+  const subGap = 18;
 
-  // Split title at fullwidth/vertical colon when present.
   let titleCols = [];
   const colonIdx = Math.max(title.indexOf("："), title.indexOf(":"));
   if (colonIdx > 0) {
-    titleCols = [title.slice(0, colonIdx + 1), title.slice(colonIdx + 1)].filter(
-      Boolean
-    );
+    titleCols = [title.slice(0, colonIdx), title.slice(colonIdx + 1)].filter(Boolean);
   } else {
-    titleCols = [title];
+    titleCols = title ? [title] : [];
   }
-  const n = titleCols.length + (subtitle ? 1 : 0);
-  const groupW = colW + Math.max(n - 1, 0) * pitch;
-  let x = pageW / 2 + groupW / 2 - colW;
+  const groupW =
+    colW +
+    Math.max(titleCols.length - 1, 0) * pitch +
+    (subtitle ? pitch + subGap : 0);
+  const rightmostX = pageW / 2 + groupW / 2 - colW;
 
-  // Thin rule to the right of the title group.
-  const rule = figma.createRectangle();
-  frame.appendChild(rule);
-  rule.name = "title-rule";
-  rule.resize(0.6, 280);
-  rule.x = x + colW + 18;
-  rule.y = top;
-  rule.fills = [{ type: "SOLID", color: BLACK }];
+  // Measure heights to vertically center the block.
+  const titleHeights = titleCols.map((col) => {
+    const chars = Array.from(col);
+    const colonExtra = colonIdx > 0 && col === titleCols[0] ? titleLh : 0;
+    return chars.length * titleLh + colonExtra + 4;
+  });
+  const subH = subtitle ? Array.from(subtitle).length * subLh + 4 : 0;
+  const blockH = Math.max(...titleHeights, subH || 0, 220);
+  const top = (pageH - blockH) / 2 - 8;
+
+  // Double vertical rule to the right of the title group.
+  const ruleOuter = figma.createRectangle();
+  frame.appendChild(ruleOuter);
+  ruleOuter.name = "title-rule-outer";
+  ruleOuter.resize(0.9, blockH);
+  ruleOuter.x = rightmostX + colW + 22;
+  ruleOuter.y = top;
+  ruleOuter.fills = [{ type: "SOLID", color: BLACK }];
+
+  const ruleInner = figma.createRectangle();
+  frame.appendChild(ruleInner);
+  ruleInner.name = "title-rule-inner";
+  ruleInner.resize(0.45, blockH - 24);
+  ruleInner.x = rightmostX + colW + 16;
+  ruleInner.y = top + 12;
+  ruleInner.fills = [{ type: "SOLID", color: BLACK }];
 
   for (let i = 0; i < titleCols.length; i += 1) {
-    const chars = Array.from(titleCols[i]);
-    addText(frame, chars.join("\n"), fonts.bold, titleFs, x - i * pitch, top, {
+    let chars = Array.from(titleCols[i]);
+    const colX = rightmostX - i * pitch;
+    const isLead = i === 0 && colonIdx > 0;
+    addText(frame, chars.join("\n"), fonts.bold, titleFs, colX, top, {
       lineHeight: titleLh,
       width: colW,
       height: chars.length * titleLh + 4,
@@ -393,11 +412,21 @@ function renderTitleCard(frame, page, pageNumber, fonts, pageW, pageH) {
       alignVertical: "TOP",
       name: "書名"
     });
+    if (isLead) {
+      addText(frame, "：", fonts.bold, titleFs, colX, top + chars.length * titleLh, {
+        lineHeight: titleLh,
+        width: colW,
+        height: titleLh + 2,
+        align: "CENTER",
+        alignVertical: "CENTER",
+        name: "書名-colon"
+      });
+    }
   }
   if (subtitle) {
     const chars = Array.from(subtitle);
-    const subX = x - titleCols.length * pitch - 8;
-    addText(frame, chars.join("\n"), fonts.regular, subFs, subX, top + 36, {
+    const subX = rightmostX - titleCols.length * pitch - subGap;
+    addText(frame, chars.join("\n"), fonts.regular, subFs, subX, top + 48, {
       lineHeight: subLh,
       width: colW,
       height: chars.length * subLh + 4,
@@ -406,7 +435,8 @@ function renderTitleCard(frame, page, pageNumber, fonts, pageW, pageH) {
       name: "副題"
     });
   }
-  addRunningHead(frame, "書名", pageNumber, pageW, pageH, fonts.regular);
+  // Folio only — no 卷題 on this dedicated leaf.
+  addRunningHead(frame, "", pageNumber, pageW, pageH, fonts.regular);
 }
 
 function renderHalfTitle(frame, book, fonts, pageW) {

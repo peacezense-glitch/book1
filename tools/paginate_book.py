@@ -579,7 +579,8 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "t": "tc",
                     "title": page.get("title") or "",
                     "sub": page.get("subtitle") or "",
-                    "vh": running,
+                    # Dedicated leaf — no body running head; folio only for orientation.
+                    "vh": "",
                     "fo": chinese_digits(page_num),
                 }
             )
