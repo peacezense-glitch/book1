@@ -6,14 +6,16 @@
 
 - 帳號：`uxuimno@gmail.com`（Pro）
 - 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=103-135)
-- **主排版頁：`Test Book 2`**（由此重排）
+- **主排版頁：`Test Book 2`**
 - 舊版參考：`Test Book`（含標點 layer，較難改字）
-- 已生成：自序至附錄 + 總目錄，約 **P001–P377**
+- 已生成：**P001–P354**（177 見開き），目錄在前、正文、版權頁在後
 - 規格：152 × 230 mm、繁體直排、黑白、Noto Serif TC
-- 正文：約 12 pt／行距 18.5；小標題 14.5 Bold；篇章／卷標題更大
-- 標點：**直接寫在正文欄**（無獨立標點 layer，方便改稿）
-- 小標題：168 則獨立加粗欄，前後留空欄
-- ebook：`data/book-data.json` 標準標點字元
+- **裝訂：直排右翻** — 右頁為奇數（第一頁），左頁為偶數（第二頁）
+- **正文：10.5 pt／行距 14.7**；15 欄 × 32 字；篇章／卷標題更大
+- 標點：直接寫在正文欄（無獨立標點 layer）
+- 小標題：加粗「小標題」欄；實修提示（本章實修功課／實戰練習／主功課／輔助功課／本週／今天的功課）為「副標題」
+- 不插入多餘表意空格作為段首／段末占位
+- ebook／分頁計畫：`data/book-data.json`、`data/pages-plan.json`、`book-data-carrier.png`
 
 ## 規格
 
@@ -31,7 +33,7 @@ Plugin 本體只有約 20KB，書稿資料放在 `data/book-data.json`，避免�
 ### 方法 A：直接匯入（推薦）
 
 1. Clone／下載本倉庫。
-2. 用 Figma Desktop 開啟 `Book`，進入 `book3 page`。
+2. 用 Figma Desktop 開啟目標檔案。
 3. **Plugins → Development → Import plugin from manifest…**
 4. 選擇 `figma-plugin/manifest.json`
 5. 執行 **Guiyuan Vertical Book**
@@ -58,14 +60,15 @@ Plugin 本體只有約 20KB，書稿資料放在 `data/book-data.json`，避免�
 
 ```bash
 python3 tools/build_figma_plugin.py
+python3 tools/paginate_book.py
 ```
 
-這會更新 `data/book-data.json`。請把 DOCX 與這個 JSON 一起提交到 GitHub。
+這會更新 `data/book-data.json`、`data/pages-plan.json` 與 `book-data-carrier.png`。請把 DOCX 與這些產物一起提交到 GitHub。
 
 ## 印刷 PDF
 
-1. 在 Figma 選取 `P001`、`P002`…頁面畫框
-2. 按頁碼順序匯出 PDF
+1. 在 Figma 選取見開き／頁面畫框
+2. 按頁碼順序匯出 PDF（右奇左偶）
 3. 確認成品為 152 × 230 mm、字體已嵌入、內容為黑白
 
 EPUB 應由 DOCX／結構化書稿另外生成，不要從 Figma PDF 反向轉換。

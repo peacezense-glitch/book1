@@ -180,6 +180,7 @@ function makeFrame(section, pageNumber, pageW, pageH, startY) {
   const localIndex = pageNumber - 1;
   const spreadRow = Math.floor(localIndex / 2);
   const isOdd = pageNumber % 2 === 1;
+  // 直排右翻：奇數頁在右、偶數頁在左
   frame.x = isOdd ? pageW + 24 : 0;
   frame.y = startY + spreadRow * (pageH + 72);
   return frame;
