@@ -8,12 +8,13 @@
 - 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=103-4020)
 - **主排版頁：`Test Book 3`**
 - 舊版參考：`Test Book`、`Test Book 2`
-- 已生成：**P001–P333**（167 見開き），目錄在前、正文、版權頁在後；**無填充空白頁**
+- 已生成：**P001–P328**（164 見開き），目錄在前、正文、版權頁在後；**無填充空白頁**
 - 規格：152 × 230 mm、繁體直排、黑白、Noto Serif TC
 - **裝訂：直排右翻** — 右頁為奇數（第一頁），左頁為偶數（第二頁）
 - **正文：10.5 pt／行距 14.7**；15 欄 × 32 字；篇章／卷標題更大
 - 標點：直接寫在正文欄（無獨立標點 layer）
-- 小標題：加粗「小標題」欄；實修「副標題」**前留一空欄、後接正文不空欄**
+- 小標題／副標題：**前留一空欄，後直接接正文**
+- 目錄：去掉 `·` 項目符號，卷／章條目以**粗體**層級呈現
 - MCP 排版：載入 `book-data-carrier.png` **一次排完全書**
 - ebook／分頁計畫：`data/book-data.json`、`data/pages-plan.json`、`book-data-carrier.png`
 
