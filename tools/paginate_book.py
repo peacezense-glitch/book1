@@ -162,8 +162,9 @@ def vert_text(text: str) -> str:
 def split_opener(text: str) -> list[str]:
     """Break chapter/volume/appendix titles into designed vertical columns.
 
-    Example — 第一章 心的地圖——四家共指之處 →
-      第一章 / 心的地圖 / ︱︱ / 四家共指之處
+    Chapter — 第一章 心的地圖——四家共指之處 →
+      第一章 ｜ 心的地圖｜｜ ｜ 四家共指之處
+    (dash attaches to the main title column, not its own column)
     """
     raw = text.strip()
     compact = strip_spaces(raw)
@@ -179,8 +180,7 @@ def split_opener(text: str) -> list[str]:
         if len(parts) == 2 and strip_spaces(parts[0]) and strip_spaces(parts[1]):
             return [
                 vert_text(head),
-                vert_text(strip_spaces(parts[0])),
-                "︱︱",
+                vert_text(strip_spaces(parts[0])) + "｜｜",
                 vert_text(strip_spaces(parts[1])),
             ]
         return [vert_text(head), vert_text(strip_spaces(rest))]
@@ -196,8 +196,7 @@ def split_opener(text: str) -> list[str]:
         if len(parts) == 2 and strip_spaces(parts[0]) and strip_spaces(parts[1]):
             return [
                 vert_text(head),
-                vert_text(strip_spaces(parts[0])),
-                "︓",
+                vert_text(strip_spaces(parts[0])) + "︓",
                 vert_text(strip_spaces(parts[1])),
             ]
         return [vert_text(head), vert_text(strip_spaces(rest))]
@@ -205,9 +204,29 @@ def split_opener(text: str) -> list[str]:
     # 附錄X：…
     m = re.match(r"^(附錄[一二三四])[：:](.+)$", compact)
     if m:
-        return [vert_text(m.group(1)), "︓", vert_text(m.group(2))]
+        return [vert_text(m.group(1)) + "︓", vert_text(m.group(2))]
 
     return [vert_text(compact)]
+
+
+def group_toc_items(items: list[dict]) -> list[dict]:
+    """Wrap TOC volume + its entries so they can keep together across pages."""
+    out: list[dict] = []
+    i = 0
+    while i < len(items):
+        item = items[i]
+        if item["kind"] == "toc_volume":
+            group = [item]
+            j = i + 1
+            while j < len(items) and items[j]["kind"] == "toc_entry":
+                group.append(items[j])
+                j += 1
+            out.append({"kind": "toc_block", "items": group})
+            i = j
+            continue
+        out.append(item)
+        i += 1
+    return out
 
 
 def classify_body_line(text: str) -> dict:
@@ -335,6 +354,7 @@ def build_items(book: dict) -> list[dict]:
 def paginate(items: list[dict]) -> list[dict]:
     pages: list[dict] = []
     buf: list[dict] = []
+    items = group_toc_items(items)
 
     def flush_full_pages() -> None:
         nonlocal buf
@@ -354,23 +374,36 @@ def paginate(items: list[dict]) -> list[dict]:
         for _ in range(ROWS):
             buf.append({"c": "", "s": "spacer"})
 
+    def cols_used_in_page() -> int:
+        ensure_column_break()
+        return (len(buf) % CAP) // ROWS
+
+    def remaining_cols() -> int:
+        return COLS - cols_used_in_page()
+
+    def pad_to_page_end() -> None:
+        nonlocal buf
+        ensure_column_break()
+        while len(buf) % CAP:
+            buf.append({"c": "", "s": "pad"})
+
     def place_styled_column(
         text: str,
         style: str,
         *,
         blank_before: bool = False,
         indent: int = 0,
-        keep_with_next: bool = True,
+        keep_cols: int = 1,
     ) -> None:
-        """One vertical column of styled text, optional blank before + top indent."""
+        """Place one styled column; keep_cols = total columns that must stay together."""
         nonlocal buf
         chars = vert(list(text))
-        need = (ROWS if blank_before else 0) + max(len(chars) + indent, 1)
-        in_page = len(buf) % CAP
-        if keep_with_next and in_page and (CAP - in_page) < need:
-            while len(buf) % CAP:
-                buf.append({"c": "", "s": "pad"})
-        if blank_before and buf:
+        need_cols = (1 if blank_before else 0) + 1
+        # If this column starts a larger keep-together group, reserve keep_cols.
+        reserve = max(need_cols, keep_cols)
+        if remaining_cols() < reserve:
+            pad_to_page_end()
+        if blank_before and (len(buf) % CAP):
             add_blank_column()
         ensure_column_break()
         for _ in range(indent):
@@ -380,13 +413,32 @@ def paginate(items: list[dict]) -> list[dict]:
         while len(buf) % ROWS:
             buf.append({"c": "", "s": "pad"})
 
+    def place_toc_block(block: dict) -> None:
+        """Keep a volume (or 附錄) + all its entries on one page when possible."""
+        group = block["items"]
+        # blank before volume if page already has content
+        need = (1 if (len(buf) % CAP) else 0) + len(group)
+        if need <= COLS and remaining_cols() < need:
+            pad_to_page_end()
+        # If group itself is larger than a page, fall through and let it flow.
+        for idx, entry in enumerate(group):
+            if entry["kind"] == "toc_volume":
+                place_styled_column(
+                    entry["text"],
+                    "toc_bold",
+                    blank_before=True,
+                    indent=0,
+                    keep_cols=1,
+                )
+            else:
+                place_styled_column(entry["text"], "toc_reg", indent=2, keep_cols=1)
+
     for item in items:
         kind = item["kind"]
         if kind == "opener":
             flush_full_pages()
             if buf:
-                while len(buf) < CAP:
-                    buf.append({"c": "", "s": "pad"})
+                pad_to_page_end()
                 pages.append({"type": "body", "cells": buf})
                 buf = []
             pages.append(
@@ -399,34 +451,43 @@ def paginate(items: list[dict]) -> list[dict]:
             )
             continue
 
-        if kind in ("tip", "heading", "toc_title", "toc_volume"):
-            style = {
-                "tip": "tip",
-                "heading": "heading",
-                "toc_title": "toc_bold",
-                "toc_volume": "toc_bold",
-            }[kind]
-            place_styled_column(item["text"], style, blank_before=True, indent=0)
+        if kind == "toc_block":
+            place_toc_block(item)
+            continue
+
+        if kind == "toc_title":
+            place_styled_column(item["text"], "toc_bold", blank_before=False)
+
+        elif kind in ("tip", "heading"):
+            style = "tip" if kind == "tip" else "heading"
+            # Heading/tip + at least the next column of content stay together.
+            place_styled_column(item["text"], style, blank_before=True, keep_cols=3)
 
         elif kind == "toc_entry":
             place_styled_column(item["text"], "toc_reg", indent=2)
 
         elif kind == "subhead":
-            # Mid-level: no full blank column (too airy), just column break + indent.
-            place_styled_column(item["text"], "subhead", blank_before=False, indent=1)
+            place_styled_column(
+                item["text"], "subhead", blank_before=False, indent=1, keep_cols=2
+            )
 
         elif kind == "book_title":
-            place_styled_column(item["text"], "book_title", blank_before=False, indent=3)
+            # 書名 + 副題 keep together (2 cols + trailing blank handled on subtitle).
+            place_styled_column(
+                item["text"], "book_title", blank_before=False, indent=3, keep_cols=3
+            )
 
         elif kind == "book_subtitle":
-            # Designed 副題 — content only, never the word「副標題」.
             place_styled_column(item["text"], "book_sub", blank_before=False, indent=7)
             add_blank_column()
 
         elif kind == "signature_name":
+            # 落款名 + 年月 + 書名 + 副題 ≈ 4 content cols + blanks
             if buf:
                 add_blank_column()
-            place_styled_column(item["text"], "sign", indent=6)
+            place_styled_column(
+                item["text"], "sign", indent=6, keep_cols=6
+            )
 
         elif kind == "signature_date":
             place_styled_column(item["text"], "sign_date", indent=10)
