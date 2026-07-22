@@ -60,6 +60,17 @@ def is_tip(text: str) -> bool:
     return bool(TIP_RE.match(strip_spaces(text)))
 
 
+def classify_toc(text: str) -> str:
+    """TOC hierarchy without · bullets — bold design instead."""
+    if "總目錄" in text or text == "目錄":
+        return "toc_title"
+    if re.match(r"^第.+卷", text) or text in ("自序", "附錄"):
+        return "toc_volume"
+    # Drop leading list dots; keep the entry itself bold as toc_entry.
+    text_clean = re.sub(r"^[·•･・．.]+", "", text)
+    return "toc_entry" if text_clean else "toc_entry"
+
+
 def build_items(book: dict) -> list[dict]:
     paragraphs = book["paragraphs"]
     items: list[dict] = []
@@ -67,10 +78,15 @@ def build_items(book: dict) -> list[dict]:
     for paragraph in paragraphs:
         if paragraph["kind"] != "toc":
             break
+        # Keep spaces stripped but also strip leading · bullets for TOC.
         text = strip_spaces(paragraph["text"])
+        text = re.sub(r"^[·•･・．.]+", "", text)
         if not text:
             continue
-        kind = "toc_title" if ("總目錄" in text or text == "目錄") else "toc_item"
+        # Stop at the long "全書內容總結" prose dump inside toc-kind rows.
+        if "全書內容總結" in text:
+            break
+        kind = classify_toc(text)
         items.append({"kind": kind, "text": text})
 
     start = next(i for i, p in enumerate(paragraphs) if p["kind"] != "toc")
@@ -138,10 +154,16 @@ def paginate(items: list[dict]) -> list[dict]:
             )
             continue
 
-        if kind == "subtitle":
-            # One blank column before subtitle; body follows immediately (no trailing blank).
+        if kind in ("subtitle", "heading", "toc_title", "toc_volume"):
+            # Blank column BEFORE; body/next entry follows immediately (no trailing blank).
+            style = {
+                "subtitle": "subtitle",
+                "heading": "heading",
+                "toc_title": "heading",
+                "toc_volume": "heading",
+            }[kind]
             chars = vert(list(item["text"]))
-            need = ROWS + len(chars)  # blank col + subtitle col
+            need = ROWS + max(len(chars), 1)
             in_page = len(buf) % CAP
             if in_page and (CAP - in_page) < need:
                 while len(buf) % CAP:
@@ -149,23 +171,16 @@ def paginate(items: list[dict]) -> list[dict]:
             if buf:
                 add_blank_column()
             for ch in chars:
-                buf.append({"c": ch, "s": "subtitle"})
-            while len(buf) % ROWS:
-                buf.append({"c": "", "s": "pad"})
-        elif kind in ("heading", "toc_title"):
-            style = "heading"
-            chars = vert(list(item["text"]))
-            need = len(chars) + ROWS
-            in_page = len(buf) % CAP
-            if in_page and (CAP - in_page) < need:
-                while len(buf) % CAP:
-                    buf.append({"c": "", "s": "pad"})
-            for ch in chars:
                 buf.append({"c": ch, "s": style})
             while len(buf) % ROWS:
                 buf.append({"c": "", "s": "pad"})
-            for _ in range(ROWS):
-                buf.append({"c": "", "s": "spacer"})
+        elif kind == "toc_entry":
+            # Bold TOC chapter lines, no ·, no extra blank after.
+            chars = vert(list(item["text"]))
+            for ch in chars:
+                buf.append({"c": ch, "s": "heading"})
+            while len(buf) % ROWS:
+                buf.append({"c": "", "s": "pad"})
         else:
             for ch in vert(list(item["text"])):
                 buf.append({"c": ch, "s": "body"})
