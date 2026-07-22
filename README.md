@@ -7,10 +7,11 @@
 - 帳號：`uxuimno@gmail.com`（Pro）
 - 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=102-135)
 - 頁面：`Test Book`
-- 已生成：前頁、總目錄、自序、第一卷序言與第一～二章（約至 P033）
+- 已生成：**全書**內頁 P001–P261（前頁、總目錄、自序、第一至第六卷、版權尾頁與二維碼／條碼圖）
 - 規格：152 × 230 mm、繁體直排、黑白、Noto Serif TC
 - 標點：`？！，。：；、` 使用直排字元（︖︕︐︒︓︔︑），並在格子內做水平＋垂直光學置中（`標點層・字符置中`）
 - 印刷看 Figma；ebook 用 `data/book-data.json` 的標準標點字元，兩邊都是字元而非幾何圖形
+- 見開き：共 131 個，右翻、奇頁左／偶頁右，垂直堆疊
 
 ## 規格
 
