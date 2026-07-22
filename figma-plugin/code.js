@@ -15,6 +15,14 @@ const VERTICAL_FORMS = {
   "…": "︙", "·": "・"
 };
 
+// Punctuation that must be H+V optically centered in the cell (print).
+// Ebook keeps standard forms in data/book-data.json; Figma uses these glyphs as TEXT.
+const CENTER_PUNCT = new Set(["，", "。", "、", "：", "；", "！", "？", "︐", "︒", "︑", "︓", "︔", "︕", "︖"]);
+const PUNCT_OPTICAL = {
+  "︐": [-0.26, 0.28], "︒": [-0.26, 0.28], "︑": [-0.26, 0.28],
+  "︓": [-0.22, 0.18], "︔": [-0.22, 0.22], "︕": [-0.18, 0.12], "︖": [-0.18, 0.12]
+};
+
 figma.showUI(__html__, { width: 400, height: 620, themeColors: true });
 
 function verticalize(text) {
@@ -177,34 +185,82 @@ function makeFrame(section, pageNumber, pageW, pageH, startY) {
   return frame;
 }
 
+function placeCenteredPunct(layer, glyph, fontName, fontSize, cellX, cellY, cellW, cellH) {
+  const node = figma.createText();
+  layer.appendChild(node);
+  node.fontName = fontName;
+  node.characters = glyph;
+  node.fontSize = fontSize;
+  node.fills = [{ type: "SOLID", color: BLACK }];
+  node.textAutoResize = "WIDTH_AND_HEIGHT";
+  const [dx, dy] = PUNCT_OPTICAL[glyph] || [-0.26, 0.28];
+  node.x = cellX + (cellW - node.width) / 2 + dx * cellW;
+  node.y = cellY + (cellH - node.height) / 2 + dy * cellH;
+  node.name = glyph;
+  return node;
+}
+
 function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
   const isOdd = pageNumber % 2 === 1;
   const outer = 15 * PT_PER_MM;
   const inner = 18 * PT_PER_MM;
   const top = 18 * PT_PER_MM;
   const fontSize = 10.5;
-  const lineHeight = 15.8;
-  const columnPitch = 20.2;
+  const lineHeight = 14.7;
+  const columnPitch = 21.55;
+  const colWidth = 13.125;
   const rightMargin = isOdd ? outer : inner;
-  const rightEdge = pageW - rightMargin - fontSize * 1.2;
+  const rightEdge = pageW - rightMargin - colWidth;
+  const punctLayer = figma.createFrame();
+  frame.appendChild(punctLayer);
+  punctLayer.name = "標點層・字符置中";
+  punctLayer.resize(pageW, pageH);
+  punctLayer.x = 0;
+  punctLayer.y = 0;
+  punctLayer.fills = [];
+  punctLayer.clipsContent = false;
+
   for (let column = 0; column < COLS; column += 1) {
     const characters = page.content.slice(column * ROWS, (column + 1) * ROWS);
     if (!characters.length) continue;
-    addText(
-      frame,
-      characters.join("\n"),
-      fonts.regular,
-      fontSize,
-      rightEdge - column * columnPitch,
-      top,
-      {
-        lineHeight,
-        width: fontSize * 1.45,
-        height: ROWS * lineHeight + 2,
-        align: "CENTER",
-        name: `col-${column + 1}`
+    const colX = rightEdge - column * columnPitch;
+    const display = characters.map((character) => {
+      if (!CENTER_PUNCT.has(character)) return character;
+      const glyph = VERTICAL_FORMS[character] || character;
+      const row = characters.indexOf(character);
+      return { glyph, row, isPunct: true, raw: character };
+    });
+
+    // Build column text with ideographic-space placeholders for centered punct
+    const lines = [];
+    for (let row = 0; row < characters.length; row += 1) {
+      const character = characters[row];
+      if (CENTER_PUNCT.has(character)) {
+        const glyph = VERTICAL_FORMS[character] || character;
+        placeCenteredPunct(
+          punctLayer,
+          glyph,
+          fonts.regular,
+          fontSize,
+          colX,
+          top + row * lineHeight,
+          colWidth,
+          lineHeight
+        );
+        lines.push("　");
+      } else {
+        lines.push(character);
       }
-    );
+    }
+
+    addText(frame, lines.join("\n"), fonts.regular, fontSize, colX, top, {
+      lineHeight,
+      width: colWidth,
+      height: ROWS * lineHeight + 2,
+      align: "CENTER",
+      name: `正文 ${column + 1}`
+    });
+    void display;
   }
   addFolio(frame, pageNumber, fonts.regular, pageW, pageH);
 }
