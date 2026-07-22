@@ -5,13 +5,15 @@
 ## 目前 Figma 輸出
 
 - 帳號：`uxuimno@gmail.com`（Pro）
-- 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=102-135)
-- 頁面：`Test Book`
-- 已生成：**全書**內頁 P001–P261（前頁、總目錄、自序、第一至第六卷、版權尾頁與二維碼／條碼圖）
+- 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=103-135)
+- **主排版頁：`Test Book 2`**（由此重排）
+- 舊版參考：`Test Book`（含標點 layer，較難改字）
+- 已生成：自序至附錄 + 總目錄，約 **P001–P377**
 - 規格：152 × 230 mm、繁體直排、黑白、Noto Serif TC
-- 標點：`？！，。：；、` 使用直排字元（︖︕︐︒︓︔︑），並在格子內做水平＋垂直光學置中（`標點層・字符置中`）
-- 印刷看 Figma；ebook 用 `data/book-data.json` 的標準標點字元，兩邊都是字元而非幾何圖形
-- 見開き：共 131 個，右翻、奇頁左／偶頁右，垂直堆疊
+- 正文：約 12 pt／行距 18.5；小標題 14.5 Bold；篇章／卷標題更大
+- 標點：**直接寫在正文欄**（無獨立標點 layer，方便改稿）
+- 小標題：168 則獨立加粗欄，前後留空欄
+- ebook：`data/book-data.json` 標準標點字元
 
 ## 規格
 
