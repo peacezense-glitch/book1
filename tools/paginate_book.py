@@ -196,7 +196,8 @@ def split_opener(text: str) -> list[str]:
         if len(parts) == 2 and strip_spaces(parts[0]) and strip_spaces(parts[1]):
             return [
                 vert_text(head),
-                vert_text(strip_spaces(parts[0])) + "︓",
+                # Fullwidth ： (not ︓) so horizontal CENTER matches body punct.
+                vert_text(strip_spaces(parts[0])) + "：",
                 vert_text(strip_spaces(parts[1])),
             ]
         return [vert_text(head), vert_text(strip_spaces(rest))]
@@ -204,7 +205,7 @@ def split_opener(text: str) -> list[str]:
     # 附錄X：…
     m = re.match(r"^(附錄[一二三四])[：:](.+)$", compact)
     if m:
-        return [vert_text(m.group(1)) + "︓", vert_text(m.group(2))]
+        return [vert_text(m.group(1)) + "：", vert_text(m.group(2))]
 
     return [vert_text(compact)]
 

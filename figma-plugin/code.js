@@ -163,7 +163,11 @@ function addText(parent, text, fontName, size, x, y, options = {}) {
   }
   if (options.align) {
     node.textAlignHorizontal = options.align;
-    if (options.align === "CENTER") node.textAlignVertical = "CENTER";
+  }
+  if (options.alignVertical) {
+    node.textAlignVertical = options.alignVertical;
+  } else if (options.align === "CENTER") {
+    node.textAlignVertical = "CENTER";
   }
   node.name = options.name || "text";
   return node;
@@ -172,23 +176,53 @@ function addText(parent, text, fontName, size, x, y, options = {}) {
 function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
   const isOdd = pageNumber % 2 === 1;
   const outer = OUTER_MM * PT_PER_MM;
-  const top = TOP_MM * PT_PER_MM;
-  const bottom = BOTTOM_MM * PT_PER_MM;
-  const folio = chineseDigits(pageNumber);
-  const label = `${heading || ""}${folio}`;
-  const characters = verticalize(label).join("\n");
+  const inner = BINDING_MM * PT_PER_MM;
+  const gapBody = 5 * PT_PER_MM; // 0.5 cm from body
+  const gapFolio = 10 * PT_PER_MM; // 1 cm between 卷題 and 頁碼
   const lineHeight = 11;
-  const height = Array.from(label).length * lineHeight + 2;
   const width = 10;
-  const x = isOdd ? pageW - outer + 1.5 : (outer - width) / 2;
-  const y = isOdd ? Math.max(8, top * 0.35) : pageH - bottom - height;
-  addText(frame, characters, fontName, 8, x, y, {
-    lineHeight,
-    width,
-    height,
-    align: "CENTER",
-    name: "卷題頁碼"
-  });
+  const title = String(heading || "");
+  const folio = chineseDigits(pageNumber);
+  const titleChars = Array.from(title);
+  const folioChars = Array.from(folio);
+  const titleH = Math.max(titleChars.length, 1) * lineHeight + 2;
+  const folioH = Math.max(folioChars.length, 1) * lineHeight + 2;
+  const totalH = titleH + gapFolio + folioH;
+  // Both sides share the same vertical center (水平置中).
+  const startY = (pageH - totalH) / 2;
+  const textBlockW = (COLS - 1) * 21.55 + 13.125;
+  let x;
+  if (isOdd) {
+    const bodyOuter = pageW - outer;
+    x = bodyOuter + gapBody;
+  } else {
+    const bodyOuter = pageW - inner - textBlockW;
+    x = bodyOuter - gapBody - width;
+  }
+  if (titleChars.length) {
+    addText(frame, titleChars.join("\n"), fontName, 8, x, startY, {
+      lineHeight,
+      width,
+      height: titleH,
+      align: "CENTER",
+      name: "卷題"
+    });
+  }
+  addText(
+    frame,
+    folioChars.join("\n"),
+    fontName,
+    8,
+    x,
+    startY + titleH + gapFolio,
+    {
+      lineHeight,
+      width,
+      height: folioH,
+      align: "CENTER",
+      name: "頁碼"
+    }
+  );
 }
 
 function makeFrame(section, pageNumber, pageW, pageH, startY) {
@@ -244,23 +278,38 @@ function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
 }
 
 function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
-  const characters = verticalize(page.heading);
-  const chunks = [];
-  while (characters.length) chunks.push(characters.splice(0, 18));
+  const lines =
+    Array.isArray(page.lines) && page.lines.length
+      ? page.lines
+      : (() => {
+          const characters = verticalize(page.heading);
+          const chunks = [];
+          while (characters.length) chunks.push(characters.splice(0, 18).join(""));
+          return chunks;
+        })();
+  const fs = page.level === "volume" ? 18 : page.level === "major" ? 16 : 15;
+  const lh = page.level === "volume" ? 27 : 23;
+  const openerTop = TOP_MM * PT_PER_MM;
   const startX = pageW - BINDING_MM * PT_PER_MM - 70;
-  for (let index = 0; index < chunks.length; index += 1) {
+  let tallest = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    const chars = Array.from(String(lines[index]));
+    if (!chars.length) continue;
+    const height = chars.length * lh + 2;
+    tallest = Math.max(tallest, height);
     addText(
       frame,
-      chunks[index].join("\n"),
+      chars.join("\n"),
       fonts.bold,
-      page.level === "volume" ? 18 : 15,
+      fs,
       startX - index * 37,
-      70,
+      openerTop,
       {
-        lineHeight: page.level === "volume" ? 27 : 23,
+        lineHeight: lh,
         width: 28,
-        height: 520,
+        height,
         align: "CENTER",
+        alignVertical: "TOP",
         name: "opener"
       }
     );
@@ -268,9 +317,9 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
   const rule = figma.createRectangle();
   frame.appendChild(rule);
   rule.name = "rule";
-  rule.resize(0.7, 230);
+  rule.resize(0.7, Math.max(tallest, 230));
   rule.x = startX + 45;
-  rule.y = 84;
+  rule.y = openerTop; // align rule top with opener columns
   rule.fills = [{ type: "SOLID", color: BLACK }];
   addRunningHead(
     frame,
@@ -319,6 +368,7 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
   // Traditional: only the copyright page is horizontal (English-heavy).
   const matter = Array.isArray(page.matter) ? page.matter : [];
   const marginX = 28;
+  const bottomPad = 18 * PT_PER_MM; // keep disclaimer off the trim
   const contentW = pageW - marginX * 2;
   let y = 36;
   const title = matter[0] || "《歸源手鏡》";
@@ -361,16 +411,19 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
     });
     y += 13;
   }
-  y = Math.max(y + 8, pageH - 120);
   const legal = matter.slice(25);
-  for (const line of legal) {
-    addText(frame, line, fonts.regular, 7, marginX, y, {
+  const legalHeights = legal.map((line) => (line.length > 60 ? 36 : 18));
+  const legalBlock = legalHeights.reduce((sum, h) => sum + h + 2, 0);
+  y = Math.min(y + 10, pageH - bottomPad - legalBlock);
+  for (let i = 0; i < legal.length; i += 1) {
+    const h = legalHeights[i];
+    addText(frame, legal[i], fonts.regular, 7, marginX, y, {
       width: contentW,
-      height: 28,
+      height: h,
       align: "LEFT",
       name: "colophon-legal"
     });
-    y += 26;
+    y += h + 2;
   }
 }
 
