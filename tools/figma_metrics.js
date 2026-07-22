@@ -1,13 +1,9 @@
-#!/usr/bin/env node
 /**
- * Reference metrics for Figma vertical render of《歸源手鏡》.
+ * Vertical typesetting metrics + punctuation optical centering for Figma.
  *
- * In vertical setting, 行距 = distance between columns = columnPitch (cp),
- * NOT the glyph cell width (cw). Mixing these up makes the page look cramped.
- *
- *   cw (字幅)  = 13.125
- *   cp (行距)  = 21.55   ← place columns on this pitch
- *   lh (字距)  = 14.7    ← within-column leading for 10.5pt body
+ * 行距 (column pitch) = cp, NOT glyph width cw.
+ * 標點置中: CENTER_PUNCT glyphs are placed in a punct overlay layer,
+ * optically nudged; the body column uses ideographic space 　 in those slots.
  */
 module.exports = {
   rows: 32,
@@ -19,4 +15,45 @@ module.exports = {
   bindingMm: 18,
   outerMm: 15,
   trimMm: { w: 152, h: 230 },
+  centerPunct: ["，", "。", "、", "：", "；", "！", "？", "︐", "︒", "︑", "︓", "︔", "︕", "︖"],
+  punctOptical: {
+    "︐": [-0.26, 0.28],
+    "︒": [-0.26, 0.28],
+    "︑": [-0.26, 0.28],
+    "︓": [-0.22, 0.18],
+    "︔": [-0.22, 0.22],
+    "︕": [-0.18, 0.12],
+    "︖": [-0.18, 0.12],
+  },
+  verticalForms: {
+    "，": "︐",
+    "、": "︑",
+    "。": "︒",
+    "：": "︓",
+    "；": "︔",
+    "！": "︕",
+    "？": "︖",
+    "「": "﹁",
+    "」": "﹂",
+    "『": "﹃",
+    "』": "﹄",
+    "（": "︵",
+    "）": "︶",
+    "【": "︻",
+    "】": "︼",
+    "《": "︽",
+    "》": "︾",
+    "〈": "︿",
+    "〉": "﹀",
+    "〔": "︹",
+    "〕": "︺",
+    "［": "﹇",
+    "］": "﹈",
+    "—": "︱",
+    "─": "︱",
+    "－": "︱",
+    "–": "︱",
+    "…": "︙",
+    "·": "・",
+  },
 };
