@@ -61,14 +61,12 @@ def is_tip(text: str) -> bool:
 
 
 def classify_toc(text: str) -> str:
-    """TOC hierarchy without · bullets — bold design instead."""
+    """Match original Test Book TOC hierarchy: bold volumes, indented chapters."""
     if "總目錄" in text or text == "目錄":
         return "toc_title"
     if re.match(r"^第.+卷", text) or text in ("自序", "附錄"):
         return "toc_volume"
-    # Drop leading list dots; keep the entry itself bold as toc_entry.
-    text_clean = re.sub(r"^[·•･・．.]+", "", text)
-    return "toc_entry" if text_clean else "toc_entry"
+    return "toc_entry"
 
 
 def build_items(book: dict) -> list[dict]:
@@ -175,10 +173,13 @@ def paginate(items: list[dict]) -> list[dict]:
             while len(buf) % ROWS:
                 buf.append({"c": "", "s": "pad"})
         elif kind == "toc_entry":
-            # Bold TOC chapter lines, no ·, no extra blank after.
+            # Regular weight + top indent (like Test Book), no · bullets.
             chars = vert(list(item["text"]))
+            ensure_column_break()
+            for _ in range(2):  # 頂端縮兩格
+                buf.append({"c": "", "s": "pad"})
             for ch in chars:
-                buf.append({"c": ch, "s": "heading"})
+                buf.append({"c": ch, "s": "body"})
             while len(buf) % ROWS:
                 buf.append({"c": "", "s": "pad"})
         else:
@@ -218,11 +219,21 @@ def compact_pages(pages: list[dict]) -> list[dict]:
                     chunk = chunk[:-1]
                 if not chunk or all(not cell["c"] for cell in chunk):
                     continue
+                # Leading empty pads = top indent (vertical 縮進)
+                indent = 0
+                while chunk and not chunk[0]["c"] and chunk[0]["s"] in ("pad", "spacer"):
+                    indent += 1
+                    chunk = chunk[1:]
+                if not chunk or all(not cell["c"] for cell in chunk):
+                    continue
                 chars = "".join(cell["c"] if cell["c"] else "\u200b" for cell in chunk)
                 style = "".join(STYLE.get(cell["s"], "0") for cell in chunk)
                 if len(set(style)) == 1:
                     style = style[0]
-                cols.append({"i": col, "c": chars, "s": style})
+                entry = {"i": col, "c": chars, "s": style}
+                if indent:
+                    entry["d"] = indent
+                cols.append(entry)
             compact.append({"n": page_num, "t": "p", "cols": cols})
     return compact
 
