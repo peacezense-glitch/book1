@@ -4,10 +4,11 @@ const COLS = 15;
 const PAGE_CAPACITY = ROWS * COLS;
 const BINDING_MM = 22;
 const OUTER_MM = 13;
-const TOP_MM = 12;
+const TOP_MM = 22; // align body / 大標頭 with independent title leaf
 const BOTTOM_MM = 16;
 const SPREAD_GAP_MM = 6;
-const OPENER_TOP_MM = 8;
+const OPENER_TOP_MM = 22; // align with independent title leaf
+const RUNNING_HEAD_VOL_GAP_MM = 5; // 0.5 cm between 第X卷 and 卷名
 const BLACK = { r: 0, g: 0, b: 0 };
 const WHITE = { r: 1, g: 1, b: 1 };
 const GENERATED_SECTION_NAME = "Guiyuan Interior";
@@ -175,22 +176,35 @@ function addText(parent, text, fontName, size, x, y, options = {}) {
   return node;
 }
 
+function splitRunningHead(title) {
+  const clean = String(title || "");
+  const vol = clean.match(/^(第[一二三四五六七八九十百千零〇\d]+卷)(.+)$/);
+  if (vol && vol[2]) return [vol[1], vol[2]];
+  const app = clean.match(/^(附錄[一二三四])(.+)$/);
+  if (app && app[2]) return [app[1], app[2]];
+  return [clean, ""];
+}
+
 function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
   const isOdd = pageNumber % 2 === 1;
   const outer = OUTER_MM * PT_PER_MM;
   const inner = BINDING_MM * PT_PER_MM;
   const gapBody = 5 * PT_PER_MM; // 0.5 cm from body
   const gapFolio = 10 * PT_PER_MM; // 1 cm between 卷題 and 頁碼
+  const volGap = RUNNING_HEAD_VOL_GAP_MM * PT_PER_MM; // 0.5 cm inside 卷題
   const lineHeight = 11;
   const width = 10;
-  const title = String(heading || "");
+  const [head, sub] = splitRunningHead(heading);
   const folio = chineseDigits(pageNumber);
-  const titleChars = Array.from(title);
+  const headChars = Array.from(head).filter(Boolean);
+  const subChars = Array.from(sub).filter(Boolean);
   const folioChars = Array.from(folio);
-  const titleH = Math.max(titleChars.length, 1) * lineHeight + 2;
+  const headH = Math.max(headChars.length, 1) * lineHeight + 2;
+  const subH = subChars.length ? subChars.length * lineHeight + 2 : 0;
+  const titleBlockH = headH + (subH ? volGap + subH : 0);
   const folioH = Math.max(folioChars.length, 1) * lineHeight + 2;
   // Gap straddles page midline so both sides share the same horizontal band.
-  const titleY = pageH / 2 - gapFolio / 2 - titleH;
+  const titleY = pageH / 2 - gapFolio / 2 - titleBlockH;
   const folioY = pageH / 2 + gapFolio / 2;
   const textBlockW = (COLS - 1) * 21.55 + 13.125;
   let x;
@@ -199,13 +213,22 @@ function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
   } else {
     x = pageW - inner - textBlockW - gapBody - width;
   }
-  if (titleChars.length) {
-    addText(frame, titleChars.join("\n"), fontName, 8, x, titleY, {
+  if (headChars.length) {
+    addText(frame, headChars.join("\n"), fontName, 8, x, titleY, {
       lineHeight,
       width,
-      height: titleH,
+      height: headH,
       align: "CENTER",
       name: "卷題"
+    });
+  }
+  if (subChars.length) {
+    addText(frame, subChars.join("\n"), fontName, 8, x, titleY + headH + volGap, {
+      lineHeight,
+      width,
+      height: subH,
+      align: "CENTER",
+      name: "卷題名"
     });
   }
   addText(frame, folioChars.join("\n"), fontName, 8, x, folioY, {
@@ -349,7 +372,7 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
 }
 
 function renderTitleCard(frame, page, pageNumber, fonts, pageW, pageH) {
-  // Unique post-preface book title leaf — no running head, double rule, vertically centered.
+  // Unique post-preface book title leaf — single rule, vertically centered.
   const title = String(page.title || page.tx || "");
   const subtitle = String(page.sub || page.subtitle || "");
   const titleFs = 18;
@@ -383,22 +406,14 @@ function renderTitleCard(frame, page, pageNumber, fonts, pageW, pageH) {
   const blockH = Math.max(...titleHeights, subH || 0, 220);
   const top = (pageH - blockH) / 2 - 8;
 
-  // Double vertical rule to the right of the title group.
-  const ruleOuter = figma.createRectangle();
-  frame.appendChild(ruleOuter);
-  ruleOuter.name = "title-rule-outer";
-  ruleOuter.resize(0.9, blockH);
-  ruleOuter.x = rightmostX + colW + 22;
-  ruleOuter.y = top;
-  ruleOuter.fills = [{ type: "SOLID", color: BLACK }];
-
-  const ruleInner = figma.createRectangle();
-  frame.appendChild(ruleInner);
-  ruleInner.name = "title-rule-inner";
-  ruleInner.resize(0.45, blockH - 24);
-  ruleInner.x = rightmostX + colW + 16;
-  ruleInner.y = top + 12;
-  ruleInner.fills = [{ type: "SOLID", color: BLACK }];
+  // Single vertical rule to the right of the title group.
+  const rule = figma.createRectangle();
+  frame.appendChild(rule);
+  rule.name = "title-rule";
+  rule.resize(0.7, blockH);
+  rule.x = rightmostX + colW + 18;
+  rule.y = top;
+  rule.fills = [{ type: "SOLID", color: BLACK }];
 
   for (let i = 0; i < titleCols.length; i += 1) {
     let chars = Array.from(titleCols[i]);

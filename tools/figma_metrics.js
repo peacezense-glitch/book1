@@ -9,10 +9,11 @@
  * TB4 layout (vs TB3):
  * - bindingMm 22：訂口加大，避免釘裝覆蓋
  * - outerMm 13：外側留給卷題／頁碼
- * - topMm 12 / rows 36：上下多排內文
+ * - topMm 22 / rows 36：正文／大標頭高度對齊獨立書名葉
  * - spreadGapMm 6：見開き左右頁略分開
- * - openerTopMm 8：大標題略靠上並左右置中
- * - 外側卷題＋中文數字頁碼；版權頁橫排；書名獨立頁
+ * - openerTopMm 22：大標題高度對齊獨立書名葉
+ * - 外側卷題「第X卷」與卷名之間約 0.5 cm
+ * - 外側卷題＋中文數字頁碼；版權頁橫排；書名獨立頁單線
  */
 module.exports = {
   rows: 36,
@@ -23,10 +24,11 @@ module.exports = {
   fs: 10.5,
   bindingMm: 22,
   outerMm: 13,
-  topMm: 12,
+  topMm: 22,
   bottomMm: 16,
   spreadGapMm: 6,
-  openerTopMm: 8,
+  openerTopMm: 22,
+  runningHeadVolGapMm: 5,
   trimMm: { w: 152, h: 230 },
   textAlignHorizontal: "CENTER",
   textAlignVertical: "CENTER",

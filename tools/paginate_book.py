@@ -23,8 +23,11 @@ COLS = 15
 CAP = ROWS * COLS
 BINDING_MM = 22
 OUTER_MM = 13
-TOP_MM = 12
+TOP_MM = 22  # align body / 大標頭 with independent title leaf
 BOTTOM_MM = 16
+
+# Line-start kinsoku: do not open a column with these.
+KINSKU_LINE_START = set("，。、：；！？）」』》︶﹂﹄…・")
 
 # Editorial / manuscript labels — never appear in the printed book.
 LABEL_RE = re.compile(
@@ -367,8 +370,26 @@ def paginate(items: list[dict]) -> list[dict]:
     def flush_full_pages() -> None:
         nonlocal buf
         while len(buf) >= CAP:
-            pages.append({"type": "body", "cells": buf[:CAP]})
-            buf = buf[CAP:]
+            page_cells = buf[:CAP]
+            rest = buf[CAP:]
+            # Avoid a new page that opens with only a few leftover glyphs (孤字跨頁).
+            if rest:
+                first_len = min(ROWS, len(rest))
+                first_col = rest[:first_len]
+                content_chars = sum(1 for cell in first_col if cell.get("c"))
+                styles = {cell.get("s") for cell in first_col if cell.get("c")}
+                if (
+                    0 < content_chars <= 4
+                    and styles <= {"body"}
+                    and len(page_cells) >= ROWS
+                ):
+                    moved = page_cells[-ROWS:]
+                    page_cells = page_cells[:-ROWS]
+                    while len(page_cells) < CAP:
+                        page_cells.append({"c": "", "s": "pad"})
+                    rest = moved + rest
+            pages.append({"type": "body", "cells": page_cells})
+            buf = rest
 
     def ensure_column_break() -> None:
         nonlocal buf
@@ -441,6 +462,30 @@ def paginate(items: list[dict]) -> list[dict]:
             else:
                 place_styled_column(entry["text"], "toc_reg", indent=2, keep_cols=1)
 
+    def place_body_paragraph(text: str) -> None:
+        """Flow a body paragraph into columns; avoid orphan last columns (孤字)."""
+        nonlocal buf
+        chars = vert(list(text))
+        if not chars:
+            return
+        for ch in chars:
+            buf.append({"c": ch, "s": "body"})
+        rem = len(buf) % ROWS
+        # If the last column of this paragraph is only a few glyphs (often just 。),
+        # pull from the previous full column so the remainder stays with the sentence.
+        orphan_min = 4
+        if 0 < rem <= orphan_min and len(chars) > rem:
+            steal = orphan_min - rem
+            col_start = len(buf) - rem
+            insert_at = col_start - steal
+            # Only steal within the previous column of this paragraph.
+            para_start = len(buf) - len(chars)
+            if insert_at >= para_start:
+                for _ in range(steal):
+                    buf.insert(insert_at, {"c": "", "s": "pad"})
+        while len(buf) % ROWS:
+            buf.append({"c": "", "s": "pad"})
+
     for item in items:
         kind = item["kind"]
         if kind == "opener":
@@ -468,6 +513,9 @@ def paginate(items: list[dict]) -> list[dict]:
 
         elif kind in ("tip", "heading"):
             style = "tip" if kind == "tip" else "heading"
+            # 本章實修功課：獨立起頁，避免落在頁中後段。
+            if kind == "tip" and cols_used_in_page() > 0:
+                pad_to_page_end()
             # Heading/tip + at least the next column of content stay together.
             place_styled_column(item["text"], style, blank_before=True, keep_cols=3)
 
@@ -524,10 +572,7 @@ def paginate(items: list[dict]) -> list[dict]:
             place_styled_column(item["text"], "sign_date", indent=10)
 
         else:
-            for ch in vert(list(item["text"])):
-                buf.append({"c": ch, "s": "body"})
-            while len(buf) % ROWS:
-                buf.append({"c": "", "s": "pad"})
+            place_body_paragraph(item["text"])
 
     flush_full_pages()
     if buf:
@@ -535,6 +580,80 @@ def paginate(items: list[dict]) -> list[dict]:
             buf.append({"c": "", "s": "pad"})
         pages.append({"type": "body", "cells": buf})
     return pages
+
+
+def apply_kinsoku_compact(compact: list[dict]) -> None:
+    """Move leading body punctuation onto the previous column (may exceed ROWS)."""
+
+    def is_body_col(col: dict) -> bool:
+        s = str(col.get("s", "0"))
+        return s == "0" or (len(s) > 1 and set(s) <= {"0"})
+
+    def peel(text: str) -> tuple[str, str]:
+        k = 0
+        while k < len(text) and text[k] in KINSKU_LINE_START:
+            k += 1
+        return text[:k], text[k:]
+
+    for pi, page in enumerate(compact):
+        if page.get("t") != "p":
+            continue
+        for _ in range(COLS * 3):
+            cols = sorted(page.get("cols") or [], key=lambda c: c["i"])
+            by_i = {c["i"]: c for c in cols}
+            moved = False
+            for ci in sorted(by_i):
+                cur = by_i[ci]
+                text = cur.get("c") or ""
+                if not text or text[0] not in KINSKU_LINE_START or not is_body_col(cur):
+                    continue
+                prev = next(
+                    (
+                        by_i[j]
+                        for j in range(ci - 1, -1, -1)
+                        if j in by_i and is_body_col(by_i[j])
+                    ),
+                    None,
+                )
+                if prev is None and pi > 0:
+                    prev_page = compact[pi - 1]
+                    if prev_page.get("t") == "p":
+                        prev_cols = sorted(
+                            prev_page.get("cols") or [], key=lambda c: c["i"]
+                        )
+                        prev = next(
+                            (c for c in reversed(prev_cols) if is_body_col(c)), None
+                        )
+                if prev is None:
+                    continue
+                punct, rest = peel(text)
+                prev["c"] = (prev.get("c") or "") + punct
+                cur["c"] = rest
+                if not rest:
+                    page["cols"] = [c for c in (page.get("cols") or []) if c.get("c")]
+                moved = True
+                break
+            if not moved:
+                break
+
+        cols = sorted(page.get("cols") or [], key=lambda c: c["i"])
+        if not cols or pi == 0:
+            continue
+        first = cols[0]
+        text = first.get("c") or ""
+        if text and text[0] in KINSKU_LINE_START and is_body_col(first):
+            prev_page = compact[pi - 1]
+            if prev_page.get("t") != "p":
+                continue
+            prev_cols = sorted(prev_page.get("cols") or [], key=lambda c: c["i"])
+            prev = next((c for c in reversed(prev_cols) if is_body_col(c)), None)
+            if prev is None:
+                continue
+            punct, rest = peel(text)
+            prev["c"] = (prev.get("c") or "") + punct
+            first["c"] = rest
+            if not rest:
+                page["cols"] = [c for c in (page.get("cols") or []) if c.get("c")]
 
 
 def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> list[dict]:
@@ -685,6 +804,7 @@ def main() -> None:
     items = build_items(book)
     pages = paginate(items)
     compact = compact_pages(pages, book_title=book.get("title", "歸源手鏡"))
+    apply_kinsoku_compact(compact)
     # Horizontal colophon on the next page after body (odd/right preferred).
     next_n = (compact[-1]["n"] + 1) if compact else 1
     if next_n % 2 == 0:
