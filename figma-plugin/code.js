@@ -7,20 +7,13 @@ const WHITE = { r: 1, g: 1, b: 1 };
 const GENERATED_SECTION_NAME = "Guiyuan Interior";
 
 const VERTICAL_FORMS = {
-  "，": "︐", "、": "︑", "。": "︒", "：": "︓", "；": "︔",
-  "！": "︕", "？": "︖", "「": "﹁", "」": "﹂", "『": "﹃",
+  // Match Test Book 2 / ebook: keep ，。、：；！？ as fullwidth symbols (SEO-searchable).
+  // Only brackets/dashes/ellipsis get vertical presentation forms.
+  "「": "﹁", "」": "﹂", "『": "﹃",
   "』": "﹄", "（": "︵", "）": "︶", "【": "︻", "】": "︼",
   "《": "︽", "》": "︾", "〈": "︿", "〉": "﹀", "〔": "︹",
   "〕": "︺", "［": "﹇", "］": "﹈", "—": "︱", "─": "︱",
   "…": "︙", "·": "・"
-};
-
-// Centered punctuation: geometric vector marks at cell center (no font side-bearings).
-// Direct page children — no 標點層. Body cells hold ideographic space.
-const CENTER_PUNCT = new Set(["，", "。", "、", "：", "；", "！", "？", "︐", "︒", "︑", "︓", "︔", "︕", "︖"]);
-const PUNCT_NAME = {
-  "，": "︐", "。": "︒", "、": "︑", "：": "︓", "；": "︔", "！": "︕", "？": "︖",
-  "︐": "︐", "︒": "︒", "︑": "︑", "︓": "︓", "︔": "︔", "︕": "︕", "︖": "︖"
 };
 
 figma.showUI(__html__, { width: 400, height: 620, themeColors: true });
@@ -153,7 +146,10 @@ function addText(parent, text, fontName, size, x, y, options = {}) {
   } else {
     node.textAutoResize = "WIDTH_AND_HEIGHT";
   }
-  if (options.align) node.textAlignHorizontal = options.align;
+  if (options.align) {
+    node.textAlignHorizontal = options.align;
+    if (options.align === "CENTER") node.textAlignVertical = "CENTER";
+  }
   node.name = options.name || "text";
   return node;
 }
@@ -186,96 +182,6 @@ function makeFrame(section, pageNumber, pageW, pageH, startY) {
   return frame;
 }
 
-function placeCenteredPunct(parent, glyph, _fontName, _fontSize, cellX, cellY, cellW, cellH) {
-  const name = PUNCT_NAME[glyph] || glyph;
-  const fill = [{ type: "SOLID", color: BLACK }];
-  const nodes = [];
-
-  const period = () => {
-    const r = Math.min(cellW, cellH) * 0.12;
-    const el = figma.createEllipse();
-    parent.appendChild(el);
-    el.resize(r * 2, r * 2);
-    el.x = cellX + cellW / 2 - r;
-    el.y = cellY + cellH / 2 - r;
-    el.fills = fill;
-    el.name = name;
-    nodes.push(el);
-  };
-
-  const comma = () => {
-    const w = cellW * 0.16;
-    const h = cellH * 0.32;
-    const node = figma.createRectangle();
-    parent.appendChild(node);
-    node.resize(w, h);
-    node.cornerRadius = w / 2;
-    node.x = cellX + cellW / 2 - w / 2;
-    node.y = cellY + cellH / 2 - h / 2;
-    node.fills = fill;
-    node.name = name;
-    nodes.push(node);
-  };
-
-  const colon = () => {
-    const r = Math.min(cellW, cellH) * 0.095;
-    const gap = cellH * 0.15;
-    for (const sign of [-1, 1]) {
-      const el = figma.createEllipse();
-      parent.appendChild(el);
-      el.resize(r * 2, r * 2);
-      el.x = cellX + cellW / 2 - r;
-      el.y = cellY + cellH / 2 - r + sign * gap;
-      el.fills = fill;
-      el.name = name;
-      nodes.push(el);
-    }
-  };
-
-  const bang = () => {
-    const barW = cellW * 0.14;
-    const barH = cellH * 0.42;
-    const bar = figma.createRectangle();
-    parent.appendChild(bar);
-    bar.resize(barW, barH);
-    bar.cornerRadius = barW / 2;
-    bar.x = cellX + cellW / 2 - barW / 2;
-    bar.y = cellY + cellH * 0.18;
-    bar.fills = fill;
-    bar.name = name;
-    nodes.push(bar);
-    const r = Math.min(cellW, cellH) * 0.09;
-    const el = figma.createEllipse();
-    parent.appendChild(el);
-    el.resize(r * 2, r * 2);
-    el.x = cellX + cellW / 2 - r;
-    el.y = cellY + cellH * 0.72;
-    el.fills = fill;
-    el.name = name;
-    nodes.push(el);
-  };
-
-  if (name === "︒") period();
-  else if (name === "︐" || name === "︑") comma();
-  else if (name === "︓") colon();
-  else if (name === "︔") {
-    const r = Math.min(cellW, cellH) * 0.09;
-    const el = figma.createEllipse();
-    parent.appendChild(el);
-    el.resize(r * 2, r * 2);
-    el.x = cellX + cellW / 2 - r;
-    el.y = cellY + cellH * 0.32 - r;
-    el.fills = fill;
-    el.name = name;
-    nodes.push(el);
-    comma();
-    nodes[nodes.length - 1].y = cellY + cellH * 0.55;
-  } else if (name === "︕" || name === "︖") bang();
-  else period();
-
-  return nodes[0];
-}
-
 function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
   const isOdd = pageNumber % 2 === 1;
   const outer = 15 * PT_PER_MM;
@@ -287,36 +193,17 @@ function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
   const colWidth = 13.125;
   const rightMargin = isOdd ? outer : inner;
   const rightEdge = pageW - rightMargin - colWidth;
+  // Test Book 2 recipe: fullwidth punct stays inline in the column;
+  // textAlign H+V CENTER centers each cell (ebook/SEO: real text symbols only).
   for (let column = 0; column < COLS; column += 1) {
     const characters = page.content.slice(column * ROWS, (column + 1) * ROWS);
     if (!characters.length) continue;
     const colX = rightEdge - column * columnPitch;
-    const lines = [];
-    for (let row = 0; row < characters.length; row += 1) {
-      const character = characters[row];
-      if (CENTER_PUNCT.has(character)) {
-        const glyph = VERTICAL_FORMS[character] || character;
-        // Direct page child — no 標點層 wrapper
-        placeCenteredPunct(
-          frame,
-          glyph,
-          fonts.regular,
-          fontSize,
-          colX,
-          top + row * lineHeight,
-          colWidth,
-          lineHeight
-        );
-        lines.push("　");
-      } else {
-        lines.push(character);
-      }
-    }
-
+    const lines = characters.map((character) => VERTICAL_FORMS[character] || character);
     addText(frame, lines.join("\n"), fonts.regular, fontSize, colX, top, {
       lineHeight,
       width: colWidth,
-      height: ROWS * lineHeight + 2,
+      height: lines.length * lineHeight + 2,
       align: "CENTER",
       name: `正文 ${column + 1}`
     });

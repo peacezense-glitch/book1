@@ -1,9 +1,10 @@
 /**
- * Vertical typesetting metrics for Figma.
+ * Vertical typesetting metrics for Figma (match Test Book 2).
  *
  * 行距 (column pitch) = cp 21.55, NOT glyph width cw.
- * 標點: 格心向量符號（圓／豎條／雙點），直接掛在頁面下（不要標點層）。
- * 不用字型 ︐︒ — Noto 直式標點墨心偏隅，無法靠 align/optical 真正置中。
+ * 標點: 全形符號（，。：；！？、）寫在正文欄內（ebook / SEO 可搜尋）；
+ * textAlign H+V = CENTER；無獨立標點層、無向量替代。
+ * 括號等仍用直式呈現形（﹁﹂︽︾…）。
  */
 module.exports = {
   rows: 32,
@@ -17,5 +18,5 @@ module.exports = {
   trimMm: { w: 152, h: 230 },
   textAlignHorizontal: "CENTER",
   textAlignVertical: "CENTER",
-  punctMode: "vector-cell-center",
+  punctMode: "inline-fullwidth-symbols",
 };
