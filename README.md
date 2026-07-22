@@ -5,8 +5,8 @@
 ## 目前 Figma 輸出
 
 - 帳號：`uxuimno@gmail.com`（Pro）
-- 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=219-136)
-- **主排版頁：`Test Book 4`**（對齊 InDesign 人工排版）
+- 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=231-10397)
+- **主排版頁：`Test Book 4`**（node `231:10397`；對齊 InDesign 人工排版）
 - 舊版參考：`Test Book 3`、`Test Book 2`、`Test Book`
 - 已生成：見開き全冊；目錄在前、正文、**橫排版權頁**在後；**無填充空白頁**
 - 規格：152 × 230 mm、繁體直排、黑白、Noto Serif TC
