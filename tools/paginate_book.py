@@ -57,6 +57,13 @@ ARABIC_LIST_HEAD_RE = re.compile(r"^\d+\.\s*")
 BOOK_TITLE_RE = re.compile(r"^︽.+︾$")
 
 VERTICAL_FORMS = {
+    "，": "︐",
+    "、": "︑",
+    "。": "︒",
+    "：": "︓",
+    "；": "︔",
+    "！": "︕",
+    "？": "︖",
     "「": "﹁",
     "」": "﹂",
     "『": "﹃",
@@ -75,7 +82,10 @@ VERTICAL_FORMS = {
     "］": "﹈",
     "—": "︱",
     "─": "︱",
+    "－": "︱",
+    "–": "︱",
     "…": "︙",
+    "·": "・",
 }
 
 # Style codes embedded in pages-plan / carrier for Figma render.
@@ -144,6 +154,62 @@ def classify_toc(text: str) -> str:
     return "toc_entry"
 
 
+def vert_text(text: str) -> str:
+    """Apply vertical punctuation forms to a whole string."""
+    return "".join(vert(list(text)))
+
+
+def split_opener(text: str) -> list[str]:
+    """Break chapter/volume/appendix titles into designed vertical columns.
+
+    Example — 第一章 心的地圖——四家共指之處 →
+      第一章 / 心的地圖 / ︱︱ / 四家共指之處
+    """
+    raw = text.strip()
+    compact = strip_spaces(raw)
+
+    # 第X章 …——…
+    m = re.match(
+        r"^(第[一二三四五六七八九十百零〇两兩\d]+章)\s*(.+)$",
+        raw,
+    )
+    if m:
+        head, rest = m.group(1), m.group(2)
+        parts = re.split(r"[—─－-]{2,}|——|──", rest, maxsplit=1)
+        if len(parts) == 2 and strip_spaces(parts[0]) and strip_spaces(parts[1]):
+            return [
+                vert_text(head),
+                vert_text(strip_spaces(parts[0])),
+                "︱︱",
+                vert_text(strip_spaces(parts[1])),
+            ]
+        return [vert_text(head), vert_text(strip_spaces(rest))]
+
+    # 第X卷 …：…
+    m = re.match(
+        r"^(第[一二三四五六七八九十百零〇两兩\d]+卷)\s*(.+)$",
+        raw,
+    )
+    if m:
+        head, rest = m.group(1), m.group(2)
+        parts = re.split(r"[：:]", rest, maxsplit=1)
+        if len(parts) == 2 and strip_spaces(parts[0]) and strip_spaces(parts[1]):
+            return [
+                vert_text(head),
+                vert_text(strip_spaces(parts[0])),
+                "︓",
+                vert_text(strip_spaces(parts[1])),
+            ]
+        return [vert_text(head), vert_text(strip_spaces(rest))]
+
+    # 附錄X：…
+    m = re.match(r"^(附錄[一二三四])[：:](.+)$", compact)
+    if m:
+        return [vert_text(m.group(1)), "︓", vert_text(m.group(2))]
+
+    return [vert_text(compact)]
+
+
 def classify_body_line(text: str) -> dict:
     """Semantic role for a body-kind paragraph, by meaning not raw dump."""
     label, content = strip_label(text)
@@ -154,7 +220,12 @@ def classify_body_line(text: str) -> dict:
         return {"kind": "tip", "text": content}
 
     if APPENDIX_RE.match(text):
-        return {"kind": "opener", "level": "chapter", "text": text}
+        return {
+            "kind": "opener",
+            "level": "chapter",
+            "text": text,
+            "lines": split_opener(text),
+        }
 
     if PREFACE_SECTION_RE.match(text):
         return {"kind": "heading", "text": text}
@@ -208,7 +279,16 @@ def build_items(book: dict) -> list[dict]:
             continue
 
         if kind in ("volume", "chapter", "major"):
-            items.append({"kind": "opener", "level": kind, "text": text})
+            # Use original spacing to detect title breaks (章␠題——副題).
+            original = paragraph["text"].strip()
+            items.append(
+                {
+                    "kind": "opener",
+                    "level": kind,
+                    "text": strip_spaces(original),
+                    "lines": split_opener(original),
+                }
+            )
             continue
 
         if kind == "heading":
@@ -237,7 +317,14 @@ def build_items(book: dict) -> list[dict]:
         else:
             items.append(classified)
 
-    items.append({"kind": "opener", "level": "chapter", "text": "版權頁"})
+    items.append(
+        {
+            "kind": "opener",
+            "level": "chapter",
+            "text": "版權頁",
+            "lines": ["版權頁"],
+        }
+    )
     for line in book.get("backMatter", []):
         text = strip_spaces(line if isinstance(line, str) else str(line))
         if text:
@@ -307,6 +394,7 @@ def paginate(items: list[dict]) -> list[dict]:
                     "type": "opener",
                     "level": item.get("level", "chapter"),
                     "text": item["text"],
+                    "lines": item.get("lines") or split_opener(item["text"]),
                 }
             )
             continue
@@ -363,12 +451,14 @@ def compact_pages(pages: list[dict]) -> list[dict]:
     for index, page in enumerate(pages):
         page_num = index + 1
         if page["type"] == "opener":
+            lines = page.get("lines") or split_opener(page["text"])
             compact.append(
                 {
                     "n": page_num,
                     "t": "o",
                     "lv": page.get("level", "chapter"),
                     "tx": page["text"],
+                    "ln": lines,  # semantic vertical columns for designed 断行
                 }
             )
         elif page["type"] == "blank":
