@@ -10,7 +10,9 @@
  * - bindingMm 22：訂口加大，避免釘裝覆蓋
  * - outerMm 13：外側留給卷題／頁碼
  * - topMm 12 / rows 36：上下多排內文
- * - 外側卷題＋中文數字頁碼；版權頁橫排
+ * - spreadGapMm 6：見開き左右頁略分開
+ * - openerTopMm 8：大標題略靠上並左右置中
+ * - 外側卷題＋中文數字頁碼；版權頁橫排；書名獨立頁
  */
 module.exports = {
   rows: 36,
@@ -23,6 +25,8 @@ module.exports = {
   outerMm: 13,
   topMm: 12,
   bottomMm: 16,
+  spreadGapMm: 6,
+  openerTopMm: 8,
   trimMm: { w: 152, h: 230 },
   textAlignHorizontal: "CENTER",
   textAlignVertical: "CENTER",

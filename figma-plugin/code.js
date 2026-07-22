@@ -6,6 +6,8 @@ const BINDING_MM = 22;
 const OUTER_MM = 13;
 const TOP_MM = 12;
 const BOTTOM_MM = 16;
+const SPREAD_GAP_MM = 6;
+const OPENER_TOP_MM = 8;
 const BLACK = { r: 0, g: 0, b: 0 };
 const WHITE = { r: 1, g: 1, b: 1 };
 const GENERATED_SECTION_NAME = "Guiyuan Interior";
@@ -225,8 +227,9 @@ function makeFrame(section, pageNumber, pageW, pageH, startY) {
   const localIndex = pageNumber - 1;
   const spreadRow = Math.floor(localIndex / 2);
   const isOdd = pageNumber % 2 === 1;
-  // 直排右翻：奇數頁在右、偶數頁在左
-  frame.x = isOdd ? pageW + 24 : 0;
+  const gap = SPREAD_GAP_MM * PT_PER_MM;
+  // 直排右翻：奇數頁在右、偶數頁在左；左右略分開
+  frame.x = isOdd ? pageW + gap : 0;
   frame.y = startY + spreadRow * (pageH + 72);
   return frame;
 }
@@ -279,8 +282,13 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
         })();
   const fs = page.level === "volume" ? 18 : page.level === "major" ? 16 : 15;
   const lh = page.level === "volume" ? 27 : 23;
-  const openerTop = TOP_MM * PT_PER_MM;
-  const startX = pageW - BINDING_MM * PT_PER_MM - 70;
+  const openerTop = OPENER_TOP_MM * PT_PER_MM;
+  const colW = 28;
+  const pitch = 37;
+  const n = Math.max(lines.length, 1);
+  const groupW = colW + (n - 1) * pitch;
+  // Horizontally center the opener group on the page.
+  const rightmostX = pageW / 2 + groupW / 2 - colW;
   let tallest = 0;
   for (let index = 0; index < lines.length; index += 1) {
     let chars = Array.from(String(lines[index]));
@@ -293,11 +301,11 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
     }
     const height = chars.length * lh + 2;
     tallest = Math.max(tallest, height + (colon ? lh : 0));
-    const colX = startX - index * 37;
+    const colX = rightmostX - index * pitch;
     if (chars.length) {
       addText(frame, chars.join("\n"), fonts.bold, fs, colX, openerTop, {
         lineHeight: lh,
-        width: 28,
+        width: colW,
         height,
         align: "CENTER",
         alignVertical: "TOP",
@@ -305,7 +313,6 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
       });
     }
     if (colon) {
-      // Own cell so fullwidth ： is horizontally centered in the column.
       addText(
         frame,
         colon,
@@ -315,7 +322,7 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
         openerTop + chars.length * lh,
         {
           lineHeight: lh,
-          width: 28,
+          width: colW,
           height: lh + 2,
           align: "CENTER",
           alignVertical: "CENTER",
@@ -327,9 +334,9 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
   const rule = figma.createRectangle();
   frame.appendChild(rule);
   rule.name = "rule";
-  rule.resize(0.7, Math.max(tallest, 230));
-  rule.x = startX + 45;
-  rule.y = openerTop; // align rule top with opener columns
+  rule.resize(0.7, Math.max(tallest, 220));
+  rule.x = rightmostX + colW + 14;
+  rule.y = openerTop;
   rule.fills = [{ type: "SOLID", color: BLACK }];
   addRunningHead(
     frame,
@@ -339,6 +346,67 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
     pageH,
     fonts.regular
   );
+}
+
+function renderTitleCard(frame, page, pageNumber, fonts, pageW, pageH) {
+  // Unique post-preface book title leaf — vertical, centered, airy.
+  const title = String(page.title || page.tx || "");
+  const subtitle = String(page.sub || page.subtitle || "");
+  const top = 28 * PT_PER_MM;
+  const titleFs = 17;
+  const titleLh = 26;
+  const subFs = 11;
+  const subLh = 17;
+  const colW = 26;
+  const pitch = 34;
+
+  // Split title at fullwidth/vertical colon when present.
+  let titleCols = [];
+  const colonIdx = Math.max(title.indexOf("："), title.indexOf(":"));
+  if (colonIdx > 0) {
+    titleCols = [title.slice(0, colonIdx + 1), title.slice(colonIdx + 1)].filter(
+      Boolean
+    );
+  } else {
+    titleCols = [title];
+  }
+  const n = titleCols.length + (subtitle ? 1 : 0);
+  const groupW = colW + Math.max(n - 1, 0) * pitch;
+  let x = pageW / 2 + groupW / 2 - colW;
+
+  // Thin rule to the right of the title group.
+  const rule = figma.createRectangle();
+  frame.appendChild(rule);
+  rule.name = "title-rule";
+  rule.resize(0.6, 280);
+  rule.x = x + colW + 18;
+  rule.y = top;
+  rule.fills = [{ type: "SOLID", color: BLACK }];
+
+  for (let i = 0; i < titleCols.length; i += 1) {
+    const chars = Array.from(titleCols[i]);
+    addText(frame, chars.join("\n"), fonts.bold, titleFs, x - i * pitch, top, {
+      lineHeight: titleLh,
+      width: colW,
+      height: chars.length * titleLh + 4,
+      align: "CENTER",
+      alignVertical: "TOP",
+      name: "書名"
+    });
+  }
+  if (subtitle) {
+    const chars = Array.from(subtitle);
+    const subX = x - titleCols.length * pitch - 8;
+    addText(frame, chars.join("\n"), fonts.regular, subFs, subX, top + 36, {
+      lineHeight: subLh,
+      width: colW,
+      height: chars.length * subLh + 4,
+      align: "CENTER",
+      alignVertical: "TOP",
+      name: "副題"
+    });
+  }
+  addRunningHead(frame, "書名", pageNumber, pageW, pageH, fonts.regular);
 }
 
 function renderHalfTitle(frame, book, fonts, pageW) {
@@ -378,7 +446,6 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
   // Traditional: only the copyright page is horizontal (English-heavy).
   const matter = Array.isArray(page.matter) ? page.matter : [];
   const marginX = 28;
-  const bottomPad = 18 * PT_PER_MM; // keep disclaimer off the trim
   const contentW = pageW - marginX * 2;
   let y = 36;
   const title = matter[0] || "《歸源手鏡》";
@@ -548,6 +615,9 @@ async function generateBook(message) {
     }
     if (page.type === "half-title") renderHalfTitle(frame, book, fonts, pageW);
     if (page.type === "title") renderTitle(frame, book, fonts, pageW);
+    if (page.type === "title_card") {
+      renderTitleCard(frame, page, pageNumber, fonts, pageW, pageH);
+    }
     if (page.type === "colophon") {
       renderColophon(frame, page, pageNumber, fonts, pageW, pageH);
     }

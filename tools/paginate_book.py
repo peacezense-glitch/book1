@@ -480,26 +480,48 @@ def paginate(items: list[dict]) -> list[dict]:
             )
 
         elif kind == "book_title":
-            # 書名 + 副題 keep together (2 cols + trailing blank handled on subtitle).
-            place_styled_column(
-                item["text"], "book_title", blank_before=False, indent=3, keep_cols=3
+            # Dedicated title card page (unique design) — not body columns.
+            flush_full_pages()
+            if buf:
+                pad_to_page_end()
+                pages.append({"type": "body", "cells": buf})
+                buf = []
+            pages.append(
+                {
+                    "type": "title_card",
+                    "title": item["text"],
+                    "subtitle": "",
+                }
             )
 
         elif kind == "book_subtitle":
-            place_styled_column(item["text"], "book_sub", blank_before=False, indent=7)
-            add_blank_column()
+            # Attach subtitle to the preceding title_card when possible.
+            if pages and pages[-1].get("type") == "title_card" and not pages[-1].get(
+                "subtitle"
+            ):
+                pages[-1]["subtitle"] = item["text"]
+            else:
+                flush_full_pages()
+                if buf:
+                    pad_to_page_end()
+                    pages.append({"type": "body", "cells": buf})
+                    buf = []
+                pages.append(
+                    {
+                        "type": "title_card",
+                        "title": "",
+                        "subtitle": item["text"],
+                    }
+                )
 
         elif kind == "signature_name":
-            # 落款名 + 年月 + 書名 + 副題 ≈ 4 content cols + blanks
-            if buf:
-                add_blank_column()
+            # Keep 謹識 with the preceding 自序 page when possible.
             place_styled_column(
-                item["text"], "sign", indent=6, keep_cols=6
+                item["text"], "sign", blank_before=True, indent=6, keep_cols=3
             )
 
         elif kind == "signature_date":
             place_styled_column(item["text"], "sign_date", indent=10)
-            add_blank_column()
 
         else:
             for ch in vert(list(item["text"])):
@@ -546,6 +568,17 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                 {
                     "n": page_num,
                     "t": "b",
+                    "vh": running,
+                    "fo": chinese_digits(page_num),
+                }
+            )
+        elif page["type"] == "title_card":
+            compact.append(
+                {
+                    "n": page_num,
+                    "t": "tc",
+                    "title": page.get("title") or "",
+                    "sub": page.get("subtitle") or "",
                     "vh": running,
                     "fo": chinese_digits(page_num),
                 }
