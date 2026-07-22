@@ -107,6 +107,18 @@ def paginate(items: list[dict]) -> list[dict]:
             pages.append({"type": "body", "cells": buf[:CAP]})
             buf = buf[CAP:]
 
+    def ensure_column_break() -> None:
+        nonlocal buf
+        if buf and len(buf) % ROWS:
+            while len(buf) % ROWS:
+                buf.append({"c": "", "s": "pad"})
+
+    def add_blank_column() -> None:
+        nonlocal buf
+        ensure_column_break()
+        for _ in range(ROWS):
+            buf.append({"c": "", "s": "spacer"})
+
     for item in items:
         kind = item["kind"]
         if kind == "opener":
@@ -116,8 +128,7 @@ def paginate(items: list[dict]) -> list[dict]:
                     buf.append({"c": "", "s": "pad"})
                 pages.append({"type": "body", "cells": buf})
                 buf = []
-            if len(pages) % 2 == 1:
-                pages.append({"type": "blank"})
+            # Do not insert blank filler pages before openers.
             pages.append(
                 {
                     "type": "opener",
@@ -127,8 +138,22 @@ def paginate(items: list[dict]) -> list[dict]:
             )
             continue
 
-        if kind in ("heading", "subtitle", "toc_title"):
-            style = "subtitle" if kind == "subtitle" else "heading"
+        if kind == "subtitle":
+            # One blank column before subtitle; body follows immediately (no trailing blank).
+            chars = vert(list(item["text"]))
+            need = ROWS + len(chars)  # blank col + subtitle col
+            in_page = len(buf) % CAP
+            if in_page and (CAP - in_page) < need:
+                while len(buf) % CAP:
+                    buf.append({"c": "", "s": "pad"})
+            if buf:
+                add_blank_column()
+            for ch in chars:
+                buf.append({"c": ch, "s": "subtitle"})
+            while len(buf) % ROWS:
+                buf.append({"c": "", "s": "pad"})
+        elif kind in ("heading", "toc_title"):
+            style = "heading"
             chars = vert(list(item["text"]))
             need = len(chars) + ROWS
             in_page = len(buf) % CAP

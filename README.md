@@ -6,15 +6,15 @@
 
 - 帳號：`uxuimno@gmail.com`（Pro）
 - 檔案：[Button-Test](https://www.figma.com/design/MiTnf3APyMXeGIH9Jgkek7/Button-Test?node-id=103-135)
-- **主排版頁：`Test Book 2`**
-- 舊版參考：`Test Book`（含標點 layer，較難改字）
-- 已生成：**P001–P354**（177 見開き），目錄在前、正文、版權頁在後
+- **主排版頁：`Test Book 3`**
+- 舊版參考：`Test Book`、`Test Book 2`
+- 已生成：**P001–P333**（167 見開き），目錄在前、正文、版權頁在後；**無填充空白頁**
 - 規格：152 × 230 mm、繁體直排、黑白、Noto Serif TC
 - **裝訂：直排右翻** — 右頁為奇數（第一頁），左頁為偶數（第二頁）
 - **正文：10.5 pt／行距 14.7**；15 欄 × 32 字；篇章／卷標題更大
 - 標點：直接寫在正文欄（無獨立標點 layer）
-- 小標題：加粗「小標題」欄；實修提示（本章實修功課／實戰練習／主功課／輔助功課／本週／今天的功課）為「副標題」
-- 不插入多餘表意空格作為段首／段末占位
+- 小標題：加粗「小標題」欄；實修「副標題」**前留一空欄、後接正文不空欄**
+- MCP 排版：載入 `book-data-carrier.png` **一次排完全書**
 - ebook／分頁計畫：`data/book-data.json`、`data/pages-plan.json`、`book-data-carrier.png`
 
 ## 規格
