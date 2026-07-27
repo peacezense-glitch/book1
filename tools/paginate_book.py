@@ -565,13 +565,23 @@ def paginate(items: list[dict]) -> list[dict]:
                 )
 
         elif kind == "signature_name":
-            # Keep 謹識 with the preceding 自序 page when possible.
+            # Keep 謹識 with the preceding 自序 page; bottom-align in the column.
+            name_chars = vert(list(item["text"]))
             place_styled_column(
-                item["text"], "sign", blank_before=True, indent=6, keep_cols=3
+                item["text"],
+                "sign",
+                blank_before=True,
+                indent=max(0, ROWS - len(name_chars)),
+                keep_cols=3,
             )
 
         elif kind == "signature_date":
-            place_styled_column(item["text"], "sign_date", indent=10)
+            date_chars = vert(list(item["text"]))
+            place_styled_column(
+                item["text"],
+                "sign_date",
+                indent=max(0, ROWS - len(date_chars)),
+            )
 
         else:
             place_body_paragraph(item["text"])
@@ -743,13 +753,43 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
     return compact
 
 
+def build_colophon_qr() -> dict:
+    """B/W QR payload for the copyright page (講堂課程登記表 → daohk.com)."""
+    try:
+        import qrcode
+    except ImportError:
+        return {
+            "title": "講堂課程登記表",
+            "url": "www.daohk.com",
+            "href": "https://www.daohk.com",
+            "matrix": [],
+        }
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=1,
+        border=2,
+    )
+    qr.add_data("https://www.daohk.com")
+    qr.make(fit=True)
+    matrix = [[1 if cell else 0 for cell in row] for row in qr.get_matrix()]
+    return {
+        "title": "講堂課程登記表",
+        "url": "www.daohk.com",
+        "href": "https://www.daohk.com",
+        "matrix": matrix,
+    }
+
+
 def build_colophon_page(book: dict, page_num: int) -> dict:
     """Horizontal copyright page payload (traditional: only this page is 橫排)."""
     # Keep original spacing — English needs spaces (unlike vertical body).
+    # Drop placeholder lines that the QR graphic replaces.
+    skip = {"華玉講堂Youtube", "華玉講堂 課程", "華玉講堂課程"}
     matter = []
     for line in book.get("backMatter", []):
         text = (line if isinstance(line, str) else str(line)).strip()
-        if text:
+        if text and text not in skip:
             matter.append(text)
     return {
         "n": page_num,
@@ -761,6 +801,7 @@ def build_colophon_page(book: dict, page_num: int) -> dict:
         "author": book.get("author", ""),
         "isbn": book.get("isbn", ""),
         "matter": matter,
+        "qr": build_colophon_qr(),
     }
 
 

@@ -1,4 +1,4 @@
-const HASH = "8922215cf41b7dfcdc9764c97c89d1a0c41d21d8";
+const HASH = "e12775142f25a6b73de02ff15376174ad0152805";
 const PAGE_NAME = "Test Book 5";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
 if (!PAGE) throw new Error("missing Test Book 5");
@@ -172,8 +172,9 @@ function renderCols(fr, cols, isOdd) {
 }
 function renderOpener(fr, page) {
   const lines = page.ln && page.ln.length ? page.ln : [String(page.tx || "")];
-  const fs = page.lv === "volume" ? 18 : page.lv === "major" ? 16 : 15;
-  const lh = page.lv === "volume" ? 27 : 23;
+  // Chapter openers match volume size (18); 自序/major stays slightly smaller.
+  const fs = page.lv === "major" ? 16 : 18;
+  const lh = page.lv === "major" ? 23 : 27;
   const colW = 28, pitch = 37;
   const n = Math.max(lines.length, 1);
   const groupW = colW + (n - 1) * pitch;
@@ -294,30 +295,91 @@ function addHText(fr, text, font, size, x, y, w, h, align, name) {
   node.textAlignHorizontal = align; node.textAutoResize = "NONE";
   node.resize(w, h); node.x = x; node.y = y; node.name = name;
 }
+function placeColophonQr(fr, qr, marginX, y, contentW) {
+  const data = qr || {};
+  const title = data.title || "講堂課程登記表";
+  const url = data.url || "www.daohk.com";
+  const matrix = Array.isArray(data.matrix) ? data.matrix : [];
+  addHText(fr, title, BOLD, 10, marginX, y, contentW, 14, "CENTER", "colophon-qr-title");
+  y += 16;
+  const qrSize = 72;
+  const qrX = marginX + (contentW - qrSize) / 2;
+  if (matrix.length) {
+    const n = matrix.length;
+    const cell = qrSize / n;
+    const parts = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${qrSize}" height="${qrSize}" shape-rendering="crispEdges">`,
+      `<rect width="100%" height="100%" fill="#ffffff"/>`
+    ];
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (!matrix[r][c]) continue;
+        parts.push(
+          `<rect x="${(c * cell).toFixed(3)}" y="${(r * cell).toFixed(3)}" width="${cell.toFixed(3)}" height="${cell.toFixed(3)}" fill="#000000"/>`
+        );
+      }
+    }
+    parts.push("</svg>");
+    const node = figma.createNodeFromSvg(parts.join(""));
+    fr.appendChild(node);
+    node.name = "colophon-qr";
+    node.x = qrX;
+    node.y = y;
+  } else {
+    const placeholder = figma.createRectangle();
+    fr.appendChild(placeholder);
+    placeholder.name = "colophon-qr";
+    placeholder.resize(qrSize, qrSize);
+    placeholder.x = qrX;
+    placeholder.y = y;
+    placeholder.fills = [];
+    placeholder.strokes = [{ type: "SOLID", color: BLACK }];
+    placeholder.strokeWeight = 1;
+  }
+  y += qrSize + 6;
+  addHText(fr, url, REG, 8, marginX, y, contentW, 12, "CENTER", "colophon-qr-url");
+  return y + 14;
+}
 function renderColophon(fr, page) {
   const marginX = 26, bottomPad = 22 * PT, contentW = PAGE_W - marginX * 2;
-  let y = 32;
-  addHText(fr, `《${page.title || "歸源手鏡"}》`, BOLD, 15, marginX, y, contentW, 24, "CENTER", "colophon-title");
-  y += 28;
-  if (page.series) { addHText(fr, `— ${page.series} —`, REG, 9, marginX, y, contentW, 14, "CENTER", "colophon-series"); y += 18; }
+  let y = 28;
+  addHText(fr, `《${page.title || "歸源手鏡"}》`, BOLD, 14, marginX, y, contentW, 22, "CENTER", "colophon-title");
+  y += 24;
+  if (page.series) { addHText(fr, `— ${page.series} —`, REG, 8.5, marginX, y, contentW, 12, "CENTER", "colophon-series"); y += 14; }
   const matter = page.matter || [];
   let i = 0;
   if (matter[0] && matter[0].includes("歸源手鏡")) i = 1;
   const metaEnd = Math.min(i + 7, matter.length);
-  for (; i < metaEnd; i++) { addHText(fr, matter[i], REG, 9, marginX, y, contentW, 14, "LEFT", "colophon-meta"); y += 14; }
-  y += 8;
-  addHText(fr, "Center", BOLD, 9, marginX, y, contentW, 14, "LEFT", "colophon-center-label"); y += 15;
+  for (; i < metaEnd; i++) { addHText(fr, matter[i], REG, 8.5, marginX, y, contentW, 12, "LEFT", "colophon-meta"); y += 12; }
+  y += 6;
+  addHText(fr, "Center", BOLD, 8.5, marginX, y, contentW, 12, "LEFT", "colophon-center-label"); y += 13;
   const centerEnd = Math.min(i + 10, matter.length);
-  for (; i < centerEnd; i++) { addHText(fr, matter[i], REG, 8, marginX, y, contentW, 12, "LEFT", "colophon-center"); y += 12; }
-  y += 8;
-  const pubEnd = Math.min(i + 7, matter.length);
-  for (; i < pubEnd; i++) { addHText(fr, matter[i], REG, 8.5, marginX, y, contentW, 13, "LEFT", "colophon-pub"); y += 13; }
-  const legal = matter.slice(i);
-  const legalHeights = legal.map((line) => (line.length > 60 ? 40 : 18));
+  for (; i < centerEnd; i++) { addHText(fr, matter[i], REG, 7.5, marginX, y, contentW, 11, "LEFT", "colophon-center"); y += 11; }
+  y += 6;
+  const rest = matter.slice(i);
+  const legalStart = rest.findIndex((line) => /All Right Reserved|版權所有|免責聲明|Nothing may be reprinted/i.test(line));
+  const beforeLegal = legalStart === -1 ? rest : rest.slice(0, legalStart);
+  const legal = legalStart === -1 ? [] : rest.slice(legalStart);
+  let qrPlaced = false;
+  for (const line of beforeLegal) {
+    if (/Youtube|華玉講堂\s*課程$/.test(line)) continue;
+    addHText(fr, line, REG, 8, marginX, y, contentW, 12, "LEFT", "colophon-pub");
+    y += 12;
+    if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
+      y += 2;
+      y = placeColophonQr(fr, page.qr, marginX, y, contentW);
+      qrPlaced = true;
+    }
+  }
+  if (!qrPlaced) {
+    y += 2;
+    y = placeColophonQr(fr, page.qr, marginX, y, contentW);
+  }
+  const legalHeights = legal.map((line) => (line.length > 60 ? 36 : 16));
   const legalBlock = legalHeights.reduce((sum, h) => sum + h + 2, 0);
-  y = Math.min(y + 10, PAGE_H - bottomPad - legalBlock);
+  y = Math.min(y + 6, PAGE_H - bottomPad - legalBlock);
   for (let k = 0; k < legal.length; k++) {
-    addHText(fr, legal[k], REG, 7, marginX, y, contentW, legalHeights[k], "LEFT", "colophon-legal");
+    addHText(fr, legal[k], REG, 6.5, marginX, y, contentW, legalHeights[k], "LEFT", "colophon-legal");
     y += legalHeights[k] + 2;
   }
 }

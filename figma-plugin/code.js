@@ -312,8 +312,9 @@ function renderOpener(frame, page, pageNumber, fonts, pageW, pageH) {
           while (characters.length) chunks.push(characters.splice(0, 18).join(""));
           return chunks;
         })();
-  const fs = page.level === "volume" ? 18 : page.level === "major" ? 16 : 15;
-  const lh = page.level === "volume" ? 27 : 23;
+  // Chapter openers match volume size (18); 自序/major stays slightly smaller.
+  const fs = page.level === "major" ? 16 : 18;
+  const lh = page.level === "major" ? 23 : 27;
   const openerTop = OPENER_TOP_MM * PT_PER_MM;
   const colW = 28;
   const pitch = 37;
@@ -532,8 +533,15 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
     y += 13;
   }
   y += 8;
-  const pubLines = matter.slice(18, 25);
-  for (const line of pubLines) {
+  const pubLines = matter.slice(18);
+  const legalStart = pubLines.findIndex(
+    (line) =>
+      /All Right Reserved|版權所有|免責聲明|Nothing may be reprinted/i.test(line)
+  );
+  const beforeLegal = legalStart === -1 ? pubLines : pubLines.slice(0, legalStart);
+  const legal = legalStart === -1 ? [] : pubLines.slice(legalStart);
+  for (const line of beforeLegal) {
+    if (/Youtube|華玉講堂\s*課程$/.test(line)) continue;
     addText(frame, line, fonts.regular, 8.5, marginX, y, {
       width: contentW,
       height: 14,
@@ -541,12 +549,22 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
       name: "colophon-pub"
     });
     y += 13;
+    if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
+      y += 4;
+      y = placeColophonQr(frame, page.qr, fonts, marginX, y, contentW);
+      y += 8;
+    }
   }
-  const legal = matter.slice(25);
+  // If invitation line missing, still place QR before legal.
+  if (!frame.findOne((n) => n.name === "colophon-qr")) {
+    y += 4;
+    y = placeColophonQr(frame, page.qr, fonts, marginX, y, contentW);
+    y += 8;
+  }
   const legalHeights = legal.map((line) => (line.length > 60 ? 36 : 18));
   const legalBlock = legalHeights.reduce((sum, h) => sum + h + 2, 0);
   const bottomPad = 22 * PT_PER_MM; // keep disclaimer clear of the trim
-  y = Math.min(y + 10, pageH - bottomPad - legalBlock);
+  y = Math.min(y + 6, pageH - bottomPad - legalBlock);
   for (let i = 0; i < legal.length; i += 1) {
     const h = legalHeights[i];
     addText(frame, legal[i], fonts.regular, 7, marginX, y, {
@@ -557,6 +575,62 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
     });
     y += h + 2;
   }
+}
+
+function placeColophonQr(frame, qr, fonts, marginX, y, contentW) {
+  const data = qr || {};
+  const title = data.title || "講堂課程登記表";
+  const url = data.url || "www.daohk.com";
+  const matrix = Array.isArray(data.matrix) ? data.matrix : [];
+  addText(frame, title, fonts.bold, 10, marginX, y, {
+    width: contentW,
+    height: 14,
+    align: "CENTER",
+    name: "colophon-qr-title"
+  });
+  y += 16;
+  const qrSize = 72; // ~25.4 mm
+  const qrX = marginX + (contentW - qrSize) / 2;
+  if (matrix.length) {
+    const n = matrix.length;
+    const cell = qrSize / n;
+    const parts = [
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${qrSize}" height="${qrSize}" shape-rendering="crispEdges">`,
+      `<rect width="100%" height="100%" fill="#ffffff"/>`
+    ];
+    for (let r = 0; r < n; r += 1) {
+      for (let c = 0; c < n; c += 1) {
+        if (!matrix[r][c]) continue;
+        parts.push(
+          `<rect x="${(c * cell).toFixed(3)}" y="${(r * cell).toFixed(3)}" width="${cell.toFixed(3)}" height="${cell.toFixed(3)}" fill="#000000"/>`
+        );
+      }
+    }
+    parts.push("</svg>");
+    const node = figma.createNodeFromSvg(parts.join(""));
+    frame.appendChild(node);
+    node.name = "colophon-qr";
+    node.x = qrX;
+    node.y = y;
+  } else {
+    const placeholder = figma.createRectangle();
+    frame.appendChild(placeholder);
+    placeholder.name = "colophon-qr";
+    placeholder.resize(qrSize, qrSize);
+    placeholder.x = qrX;
+    placeholder.y = y;
+    placeholder.fills = [];
+    placeholder.strokes = [{ type: "SOLID", color: BLACK }];
+    placeholder.strokeWeight = 1;
+  }
+  y += qrSize + 6;
+  addText(frame, url, fonts.regular, 8, marginX, y, {
+    width: contentW,
+    height: 12,
+    align: "CENTER",
+    name: "colophon-qr-url"
+  });
+  return y + 14;
 }
 
 function selectParagraphs(book, scope) {
