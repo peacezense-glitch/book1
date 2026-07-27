@@ -17,14 +17,16 @@ import struct
 import zlib
 from pathlib import Path
 
-# Test Book 4: taller text block (36 rows) with wider binding gutter.
+# Test Book 5: balanced side margins (binding + outer + text = trim width).
 ROWS = 36
 COLS = 15
 CAP = ROWS * COLS
-BINDING_MM = 22
-OUTER_MM = 13
+BINDING_MM = 21
+# OUTER companion ≈ pageW − textBlock − binding ≈ 20 mm (exact at render).
+OUTER_MM = 20
 TOP_MM = 22  # align body / 大標頭 with independent title leaf
 BOTTOM_MM = 16
+EDITION = "test-book-5"
 
 # Line-start kinsoku: do not open a column with these.
 KINSKU_LINE_START = set("，。、：；！？）」』》︶﹂﹄…・")
@@ -841,7 +843,7 @@ def main() -> None:
             "binding": "rtl-odd-right",
             "runningHead": "volume-outer",
             "colophon": "horizontal",
-            "edition": "test-book-4",
+            "edition": EDITION,
         },
         "pages": compact,
     }

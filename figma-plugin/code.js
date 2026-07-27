@@ -2,13 +2,15 @@ const PT_PER_MM = 72 / 25.4;
 const ROWS = 36;
 const COLS = 15;
 const PAGE_CAPACITY = ROWS * COLS;
-const BINDING_MM = 22;
-const OUTER_MM = 13;
+const BINDING_MM = 21;
+const OUTER_MM = 20; // nominal; exact outer derived from pageW − textBlock − binding
 const TOP_MM = 22; // align body / 大標頭 with independent title leaf
 const BOTTOM_MM = 16;
 const SPREAD_GAP_MM = 6;
 const OPENER_TOP_MM = 22; // align with independent title leaf
 const RUNNING_HEAD_VOL_GAP_MM = 5; // 0.5 cm between 第X卷 and 卷名
+const COLUMN_PITCH = 21.55;
+const COL_WIDTH = 13.125;
 const BLACK = { r: 0, g: 0, b: 0 };
 const WHITE = { r: 1, g: 1, b: 1 };
 const GENERATED_SECTION_NAME = "Guiyuan Interior";
@@ -176,6 +178,14 @@ function addText(parent, text, fontName, size, x, y, options = {}) {
   return node;
 }
 
+function pageSideMargins(pageW) {
+  // Exact pair: binding + outer + textBlock = page width (fixes TB4 asymmetry).
+  const textBlockW = (COLS - 1) * COLUMN_PITCH + COL_WIDTH;
+  const inner = BINDING_MM * PT_PER_MM;
+  const outer = pageW - textBlockW - inner;
+  return { inner, outer, textBlockW };
+}
+
 function splitRunningHead(title) {
   const clean = String(title || "");
   const vol = clean.match(/^(第[一二三四五六七八九十百千零〇\d]+卷)(.+)$/);
@@ -187,8 +197,7 @@ function splitRunningHead(title) {
 
 function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
   const isOdd = pageNumber % 2 === 1;
-  const outer = OUTER_MM * PT_PER_MM;
-  const inner = BINDING_MM * PT_PER_MM;
+  const { inner, outer, textBlockW } = pageSideMargins(pageW);
   const gapBody = 5 * PT_PER_MM; // 0.5 cm from body
   const gapFolio = 10 * PT_PER_MM; // 1 cm between 卷題 and 頁碼
   const volGap = RUNNING_HEAD_VOL_GAP_MM * PT_PER_MM; // 0.5 cm inside 卷題
@@ -206,11 +215,12 @@ function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
   // Gap straddles page midline so both sides share the same horizontal band.
   const titleY = pageH / 2 - gapFolio / 2 - titleBlockH;
   const folioY = pageH / 2 + gapFolio / 2;
-  const textBlockW = (COLS - 1) * 21.55 + 13.125;
   let x;
   if (isOdd) {
+    // Outer (right) margin: sit gapBody outside the text block.
     x = pageW - outer + gapBody;
   } else {
+    // Outer (left) margin: sit gapBody left of the text block.
     x = pageW - inner - textBlockW - gapBody - width;
   }
   if (headChars.length) {
@@ -259,13 +269,12 @@ function makeFrame(section, pageNumber, pageW, pageH, startY) {
 
 function renderBody(frame, page, pageNumber, fonts, pageW, pageH) {
   const isOdd = pageNumber % 2 === 1;
-  const outer = OUTER_MM * PT_PER_MM;
-  const inner = BINDING_MM * PT_PER_MM;
+  const { inner, outer } = pageSideMargins(pageW);
   const top = TOP_MM * PT_PER_MM;
   const fontSize = 10.5;
   const lineHeight = 14.7;
-  const columnPitch = 21.55;
-  const colWidth = 13.125;
+  const columnPitch = COLUMN_PITCH;
+  const colWidth = COL_WIDTH;
   const rightMargin = isOdd ? outer : inner;
   const rightEdge = pageW - rightMargin - colWidth;
   // Test Book 2 recipe: fullwidth punct stays inline in the column;
