@@ -359,9 +359,37 @@ def volume_running_title(text: str) -> str:
 
 
 def chinese_digits(n: int) -> str:
-    """Page folio as digit-wise Chinese numerals (五二 for 52)."""
+    """Digit-wise Chinese numerals (五二 for 52). Kept for non-folio uses."""
     table = "〇一二三四五六七八九"
     return "".join(table[int(ch)] for ch in str(n))
+
+
+def roman_numerals(n: int) -> str:
+    """Page folio as Roman numerals (XII for 12, CCCXIX for 319)."""
+    if n <= 0:
+        return ""
+    pairs = (
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    )
+    out = []
+    rest = int(n)
+    for value, glyph in pairs:
+        while rest >= value:
+            out.append(glyph)
+            rest -= value
+    return "".join(out)
 
 
 def paginate(items: list[dict]) -> list[dict]:
@@ -691,7 +719,7 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "tx": page["text"],
                     "ln": lines,  # semantic vertical columns for designed 断行
                     "vh": running,
-                    "fo": chinese_digits(page_num),
+                    "fo": roman_numerals(page_num),
                 }
             )
         elif page["type"] == "blank":
@@ -700,7 +728,7 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "n": page_num,
                     "t": "b",
                     "vh": running,
-                    "fo": chinese_digits(page_num),
+                    "fo": roman_numerals(page_num),
                 }
             )
         elif page["type"] == "title_card":
@@ -712,7 +740,7 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "sub": page.get("subtitle") or "",
                     # Dedicated leaf — no body running head; folio only for orientation.
                     "vh": "",
-                    "fo": chinese_digits(page_num),
+                    "fo": roman_numerals(page_num),
                 }
             )
         else:
@@ -747,7 +775,7 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "t": "p",
                     "cols": cols,
                     "vh": running,
-                    "fo": chinese_digits(page_num),
+                    "fo": roman_numerals(page_num),
                 }
             )
     return compact
@@ -795,7 +823,7 @@ def build_colophon_page(book: dict, page_num: int) -> dict:
         "n": page_num,
         "t": "c",
         "vh": "版權頁",
-        "fo": chinese_digits(page_num),
+        "fo": roman_numerals(page_num),
         "title": book.get("title", "歸源手鏡"),
         "series": book.get("series", ""),
         "author": book.get("author", ""),
@@ -857,7 +885,7 @@ def main() -> None:
                 "n": next_n,
                 "t": "b",
                 "vh": "版權頁",
-                "fo": chinese_digits(next_n),
+                "fo": roman_numerals(next_n),
             }
         )
         next_n += 1

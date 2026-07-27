@@ -35,6 +35,24 @@ function chineseDigits(n) {
     .join("");
 }
 
+function romanNumerals(n) {
+  let rest = Math.floor(Number(n) || 0);
+  if (rest <= 0) return "";
+  const pairs = [
+    [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
+    [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+    [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]
+  ];
+  let out = "";
+  for (const [value, glyph] of pairs) {
+    while (rest >= value) {
+      out += glyph;
+      rest -= value;
+    }
+  }
+  return out;
+}
+
 function volumeRunningTitle(text) {
   const clean = String(text).replace(/[\u3000\s]+/g, "");
   const vol = clean.match(/^(第.+?卷)([^：:]*?)[：:].+$/);
@@ -204,7 +222,7 @@ function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
   const lineHeight = 11;
   const width = 10;
   const [head, sub] = splitRunningHead(heading);
-  const folio = chineseDigits(pageNumber);
+  const folio = romanNumerals(pageNumber);
   const headChars = Array.from(head).filter(Boolean);
   const subChars = Array.from(sub).filter(Boolean);
   const folioChars = Array.from(folio);
@@ -551,14 +569,14 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
     });
     y += 13;
     if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
-      y += 4;
+      y += 14; // one blank line above QR block
       y = placeColophonQr(frame, page.qr, fonts, marginX, y, contentW);
       y += 8;
       qrPlaced = true;
     }
   }
   if (!qrPlaced) {
-    y += 4;
+    y += 14;
     y = placeColophonQr(frame, page.qr, fonts, marginX, y, contentW);
     y += 8;
   }
@@ -589,7 +607,8 @@ function placeColophonQr(frame, qr, fonts, marginX, y, contentW) {
     align: "CENTER",
     name: "colophon-qr-title"
   });
-  y += 16;
+  y += 14; // title line
+  y += 14; // one blank line above QR
   const qrSize = 72; // ~25.4 mm
   const qrX = marginX + (contentW - qrSize) / 2;
   if (matrix.length) {

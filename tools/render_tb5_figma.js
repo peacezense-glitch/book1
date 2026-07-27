@@ -1,4 +1,4 @@
-const HASH = "e12775142f25a6b73de02ff15376174ad0152805";
+const HASH = "56c4d38097af52abdaaead20568582b51c4cc5e8";
 const PAGE_NAME = "Test Book 5";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
 if (!PAGE) throw new Error("missing Test Book 5");
@@ -65,11 +65,11 @@ asset.name = "BOOK_DATA_ASSET";
 asset.resize(1, 1); asset.x = -2000; asset.y = -2000;
 asset.fills = [{ type: "IMAGE", imageHash: HASH, scaleMode: "FILL" }];
 function ensureSpread(si) {
-  let sp = PAGE.children.find((c) => c.name === `見開き ${String(si + 1).padStart(3, "0")}`);
+  let sp = PAGE.children.find((c) => c.name === `對頁${si + 1}`);
   if (!sp) {
     sp = figma.createFrame();
     PAGE.appendChild(sp);
-    sp.name = `見開き ${String(si + 1).padStart(3, "0")}`;
+    sp.name = `對頁${si + 1}`;
     sp.resize(PAGE_W * 2 + SPREAD_GAP, PAGE_H);
     sp.fills = [];
     sp.clipsContent = false;
@@ -301,7 +301,8 @@ function placeColophonQr(fr, qr, marginX, y, contentW) {
   const url = data.url || "www.daohk.com";
   const matrix = Array.isArray(data.matrix) ? data.matrix : [];
   addHText(fr, title, BOLD, 10, marginX, y, contentW, 14, "CENTER", "colophon-qr-title");
-  y += 16;
+  y += 14; // title line
+  y += 14; // one blank line above QR
   const qrSize = 72;
   const qrX = marginX + (contentW - qrSize) / 2;
   if (matrix.length) {
@@ -366,13 +367,13 @@ function renderColophon(fr, page) {
     addHText(fr, line, REG, 8, marginX, y, contentW, 12, "LEFT", "colophon-pub");
     y += 12;
     if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
-      y += 2;
+      y += 14; // one blank line above QR block
       y = placeColophonQr(fr, page.qr, marginX, y, contentW);
       qrPlaced = true;
     }
   }
   if (!qrPlaced) {
-    y += 2;
+    y += 14;
     y = placeColophonQr(fr, page.qr, marginX, y, contentW);
   }
   const legalHeights = legal.map((line) => (line.length > 60 ? 36 : 16));
@@ -406,7 +407,7 @@ for (const page of pages) {
   if (page.t !== "c") addRunningHead(fr, page);
   created.push(fr.id);
 }
-const sample = PAGE.children.find((c) => c.name === "見開き 001");
+const sample = PAGE.children.find((c) => c.name === "對頁1");
 let layout = null;
 if (sample) {
   await sample.screenshot({ scale: 0.55 });
@@ -437,7 +438,7 @@ return {
   blankSkipped: blankPages,
   titleCards,
   colophonPages,
-  spreads: PAGE.children.filter((c) => c.name.startsWith("見開き")).length,
+  spreads: PAGE.children.filter((c) => c.name.startsWith("對頁")).length,
   layout,
   pageId: PAGE.id,
   createdNodeIds: created.slice(0, 8)
