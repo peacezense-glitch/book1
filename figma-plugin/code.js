@@ -540,6 +540,7 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
   );
   const beforeLegal = legalStart === -1 ? pubLines : pubLines.slice(0, legalStart);
   const legal = legalStart === -1 ? [] : pubLines.slice(legalStart);
+  let qrPlaced = false;
   for (const line of beforeLegal) {
     if (/Youtube|華玉講堂\s*課程$/.test(line)) continue;
     addText(frame, line, fonts.regular, 8.5, marginX, y, {
@@ -553,10 +554,10 @@ function renderColophon(frame, page, pageNumber, fonts, pageW, pageH) {
       y += 4;
       y = placeColophonQr(frame, page.qr, fonts, marginX, y, contentW);
       y += 8;
+      qrPlaced = true;
     }
   }
-  // If invitation line missing, still place QR before legal.
-  if (!frame.findOne((n) => n.name === "colophon-qr")) {
+  if (!qrPlaced) {
     y += 4;
     y = placeColophonQr(frame, page.qr, fonts, marginX, y, contentW);
     y += 8;
