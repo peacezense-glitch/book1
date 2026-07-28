@@ -364,8 +364,13 @@ def chinese_digits(n: int) -> str:
     return "".join(table[int(ch)] for ch in str(n))
 
 
+def arabic_folio(n: int) -> str:
+    """Page folio as Arabic numerals (12 for 12)."""
+    return str(int(n))
+
+
 def roman_numerals(n: int) -> str:
-    """Page folio as Roman numerals (XII for 12, CCCXIX for 319)."""
+    """Unused legacy: Roman numerals (XII for 12)."""
     if n <= 0:
         return ""
     pairs = (
@@ -719,7 +724,7 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "tx": page["text"],
                     "ln": lines,  # semantic vertical columns for designed 断行
                     "vh": running,
-                    "fo": roman_numerals(page_num),
+                    "fo": arabic_folio(page_num),
                 }
             )
         elif page["type"] == "blank":
@@ -728,7 +733,7 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "n": page_num,
                     "t": "b",
                     "vh": running,
-                    "fo": roman_numerals(page_num),
+                    "fo": arabic_folio(page_num),
                 }
             )
         elif page["type"] == "title_card":
@@ -740,7 +745,7 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "sub": page.get("subtitle") or "",
                     # Dedicated leaf — no body running head; folio only for orientation.
                     "vh": "",
-                    "fo": roman_numerals(page_num),
+                    "fo": arabic_folio(page_num),
                 }
             )
         else:
@@ -775,7 +780,7 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                     "t": "p",
                     "cols": cols,
                     "vh": running,
-                    "fo": roman_numerals(page_num),
+                    "fo": arabic_folio(page_num),
                 }
             )
     return compact
@@ -823,7 +828,7 @@ def build_colophon_page(book: dict, page_num: int) -> dict:
         "n": page_num,
         "t": "c",
         "vh": "版權頁",
-        "fo": roman_numerals(page_num),
+        "fo": arabic_folio(page_num),
         "title": book.get("title", "歸源手鏡"),
         "series": book.get("series", ""),
         "author": book.get("author", ""),
@@ -885,7 +890,7 @@ def main() -> None:
                 "n": next_n,
                 "t": "b",
                 "vh": "版權頁",
-                "fo": roman_numerals(next_n),
+                "fo": arabic_folio(next_n),
             }
         )
         next_n += 1

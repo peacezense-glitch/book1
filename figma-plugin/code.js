@@ -222,7 +222,7 @@ function addRunningHead(frame, heading, pageNumber, pageW, pageH, fontName) {
   const lineHeight = 11;
   const width = 10;
   const [head, sub] = splitRunningHead(heading);
-  const folio = romanNumerals(pageNumber);
+  const folio = String(pageNumber);
   const headChars = Array.from(head).filter(Boolean);
   const subChars = Array.from(sub).filter(Boolean);
   const folioChars = Array.from(folio);
@@ -607,8 +607,7 @@ function placeColophonQr(frame, qr, fonts, marginX, y, contentW) {
     align: "CENTER",
     name: "colophon-qr-title"
   });
-  y += 14; // title line
-  y += 14; // one blank line above QR
+  y += 14; // title then QR flush (blank line is above this block)
   const qrSize = 72; // ~25.4 mm
   const qrX = marginX + (contentW - qrSize) / 2;
   if (matrix.length) {

@@ -1,4 +1,4 @@
-const HASH = "56c4d38097af52abdaaead20568582b51c4cc5e8";
+const HASH = "887beda9f801cfe3c0f701b97954f0d1df58da4b";
 const PAGE_NAME = "Test Book 5";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
 if (!PAGE) throw new Error("missing Test Book 5");
@@ -301,8 +301,7 @@ function placeColophonQr(fr, qr, marginX, y, contentW) {
   const url = data.url || "www.daohk.com";
   const matrix = Array.isArray(data.matrix) ? data.matrix : [];
   addHText(fr, title, BOLD, 10, marginX, y, contentW, 14, "CENTER", "colophon-qr-title");
-  y += 14; // title line
-  y += 14; // one blank line above QR
+  y += 14; // title then QR flush (blank line is above this block)
   const qrSize = 72;
   const qrX = marginX + (contentW - qrSize) / 2;
   if (matrix.length) {

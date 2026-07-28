@@ -12,7 +12,7 @@
  * - outerMm ~20：由 pageW − textBlock − binding 推得（約 20 mm）
  * - topMm 22 / rows 36；spreadGapMm 6；openerTopMm 22
  * - 外側卷題「第X卷」與卷名之間約 0.5 cm
- * - 外側卷題＋羅馬數字頁碼；版權頁橫排；書名獨立頁單線
+ * - 外側卷題＋阿拉伯數字頁碼；版權頁橫排；書名獨立頁單線
  * - 對頁命名：對頁1、對頁2…
  */
 module.exports = {
