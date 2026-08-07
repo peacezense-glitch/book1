@@ -1,4 +1,4 @@
-const HASH = "8bcbb0abe514104f50084d6ecf2ef8562acdbeb7";
+const HASH = "4972db9146dc4ef2d169ea2c4113877386428022";
 const COVER_HASH = "e30e2a3507acebc4b110935682888cf7c04a11fa";
 const PAGE_NAME = "Test Book 5";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
