@@ -716,7 +716,12 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
             if level == "volume":
                 running = volume_running_title(text)
             elif level == "major":
-                running = strip_spaces(text) or "自序"
+                clean = strip_spaces(text) or "自序"
+                # Guest/author prefaces: running head is short 序 / 自序 only.
+                if clean.endswith("序") and "手鏡" in clean:
+                    running = "序"
+                else:
+                    running = clean
             elif strip_spaces(text).startswith("附錄"):
                 running = volume_running_title(text)
             lines = page.get("lines") or split_opener(page["text"])

@@ -1,4 +1,5 @@
-const HASH = "0318f526f624255280aed3439943d91dee52ee7b";
+const HASH = "8bcbb0abe514104f50084d6ecf2ef8562acdbeb7";
+const COVER_HASH = "64c47f462fc2532ddcaff96db72fd1ab5866d4ab";
 const PAGE_NAME = "Test Book 5";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
 if (!PAGE) throw new Error("missing Test Book 5");
@@ -64,6 +65,16 @@ PAGE.appendChild(asset);
 asset.name = "BOOK_DATA_ASSET";
 asset.resize(1, 1); asset.x = -2000; asset.y = -2000;
 asset.fills = [{ type: "IMAGE", imageHash: HASH, scaleMode: "FILL" }];
+// Front cover (outside interior pagination).
+const cover = figma.createFrame();
+PAGE.appendChild(cover);
+cover.name = "封面";
+cover.resize(PAGE_W, PAGE_H);
+cover.x = 80;
+cover.y = 80;
+cover.clipsContent = true;
+cover.fills = [{ type: "IMAGE", imageHash: COVER_HASH, scaleMode: "FILL" }];
+const SPREAD_START_Y = 80 + PAGE_H + 72;
 function ensureSpread(si) {
   let sp = PAGE.children.find((c) => c.name === `對頁${si + 1}`);
   if (!sp) {
@@ -74,7 +85,7 @@ function ensureSpread(si) {
     sp.fills = [];
     sp.clipsContent = false;
     sp.x = 80;
-    sp.y = 80 + si * (PAGE_H + 72);
+    sp.y = SPREAD_START_Y + si * (PAGE_H + 72);
   }
   return sp;
 }
