@@ -541,14 +541,19 @@ def paginate(items: list[dict]) -> list[dict]:
                 pad_to_page_end()
                 pages.append({"type": "body", "cells": buf})
                 buf = []
-            pages.append(
-                {
-                    "type": "opener",
-                    "level": item.get("level", "chapter"),
-                    "text": item["text"],
-                    "lines": item.get("lines") or split_opener(item["text"]),
-                }
-            )
+            opener = {
+                "type": "opener",
+                "level": item.get("level", "chapter"),
+                "text": item["text"],
+                "lines": item.get("lines") or split_opener(item["text"]),
+            }
+            clean = strip_spaces(item["text"])
+            # Plate images requested on specific openers.
+            if clean == "自序":
+                opener["img"] = "jiutian"
+            elif item.get("level") == "volume" and clean.startswith("第五卷"):
+                opener["img"] = "luzu"
+            pages.append(opener)
             continue
 
         if kind == "toc_block":
@@ -559,6 +564,14 @@ def paginate(items: list[dict]) -> list[dict]:
             place_styled_column(item["text"], "toc_bold", blank_before=False)
 
         elif kind in ("tip", "heading"):
+            # Full-page plate of the four masters immediately before 卷六結語 title.
+            if kind == "heading" and "第六卷結語" in item["text"]:
+                flush_full_pages()
+                if buf:
+                    pad_to_page_end()
+                    pages.append({"type": "body", "cells": buf})
+                    buf = []
+                pages.append({"type": "illust", "img": "four"})
             style = "tip" if kind == "tip" else "heading"
             # 本章實修功課：獨立起頁，避免落在頁中後段。
             if kind == "tip" and cols_used_in_page() > 0:
@@ -733,13 +746,24 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
             elif strip_spaces(text).startswith("附錄"):
                 running = volume_running_title(text)
             lines = page.get("lines") or split_opener(page["text"])
+            entry = {
+                "n": page_num,
+                "t": "o",
+                "lv": level,
+                "tx": page["text"],
+                "ln": lines,  # semantic vertical columns for designed 断行
+                "vh": running,
+                "fo": arabic_folio(page_num),
+            }
+            if page.get("img"):
+                entry["img"] = page["img"]
+            compact.append(entry)
+        elif page["type"] == "illust":
             compact.append(
                 {
                     "n": page_num,
-                    "t": "o",
-                    "lv": level,
-                    "tx": page["text"],
-                    "ln": lines,  # semantic vertical columns for designed 断行
+                    "t": "i",
+                    "img": page.get("img") or "",
                     "vh": running,
                     "fo": arabic_folio(page_num),
                 }

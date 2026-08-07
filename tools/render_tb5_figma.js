@@ -1,5 +1,11 @@
-const HASH = "4972db9146dc4ef2d169ea2c4113877386428022";
+const HASH = "724f0a1ba6d6b292524d5e9eb37f015e98d46737";
 const COVER_HASH = "e30e2a3507acebc4b110935682888cf7c04a11fa";
+// Plate images (grayscale): 九天玄女 / 呂祖 / 四人
+const ILLUST_HASH = {
+  jiutian: "af6f3322c5acb3d08ca068f878cbb3d80cfc66a3",
+  luzu: "61413e9f7d0bb8e33bef6b170db8ce1719126395",
+  four: "9d19200a39556f941bbc62a7be820a58530031cd",
+};
 const PAGE_NAME = "Test Book 5";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
 if (!PAGE) throw new Error("missing Test Book 5");
@@ -181,7 +187,13 @@ function renderCols(fr, cols, isOdd) {
     }
   }
 }
-function renderOpener(fr, page) {
+function renderOpener(fr, page, isOdd) {
+  const imgKey = page.img;
+  if (imgKey && ILLUST_HASH[imgKey]) {
+    // Plate openers: image fills the text block; section title stays in running head.
+    placeIllust(fr, imgKey, { top: TOP, bottomPad: 18 * PT, isOdd });
+    return;
+  }
   const lines = page.ln && page.ln.length ? page.ln : [String(page.tx || "")];
   // Chapter openers match volume size (18); 自序/major stays slightly smaller.
   const fs = page.lv === "major" ? 16 : 18;
@@ -230,6 +242,28 @@ function renderOpener(fr, page) {
   rule.x = rightmostX + colW + 14;
   rule.y = OPENER_TOP;
   rule.fills = [{ type: "SOLID", color: BLACK }];
+}
+function placeIllust(fr, imgKey, opts) {
+  const hash = ILLUST_HASH[imgKey];
+  if (!hash || String(hash).startsWith("PLACEHOLDER")) return null;
+  const { inner, outer, textBlockW } = pageSideMargins();
+  const isOdd = !!(opts && opts.isOdd);
+  const top = (opts && opts.top != null) ? opts.top : TOP;
+  const bottomPad = (opts && opts.bottomPad != null) ? opts.bottomPad : 16 * PT;
+  const boxX = isOdd ? inner : outer;
+  const boxW = textBlockW;
+  const boxH = Math.max(80, PAGE_H - top - bottomPad);
+  const node = figma.createRectangle();
+  fr.appendChild(node);
+  node.name = `插圖-${imgKey}`;
+  node.resize(boxW, boxH);
+  node.x = boxX;
+  node.y = top;
+  node.fills = [{ type: "IMAGE", imageHash: hash, scaleMode: "FIT" }];
+  return node;
+}
+function renderIllust(fr, page, isOdd) {
+  placeIllust(fr, page.img || "", { top: TOP, bottomPad: 16 * PT, isOdd });
 }
 function renderTitleCard(fr, page) {
   const title = String(page.title || "");
@@ -410,8 +444,9 @@ for (const page of pages) {
   fr.clipsContent = true;
   fr.x = isOdd ? PAGE_W + SPREAD_GAP : 0;
   fr.y = 0;
-  if (page.t === "o") renderOpener(fr, page);
+  if (page.t === "o") renderOpener(fr, page, isOdd);
   else if (page.t === "p") renderCols(fr, page.cols || [], isOdd);
+  else if (page.t === "i") renderIllust(fr, page, isOdd);
   else if (page.t === "tc") { renderTitleCard(fr, page); titleCards++; }
   else if (page.t === "c") { renderColophon(fr, page); colophonPages++; }
   if (page.t !== "c") addRunningHead(fr, page);
