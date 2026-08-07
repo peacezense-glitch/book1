@@ -888,6 +888,33 @@ def png_chunk(tag: bytes, data: bytes) -> bytes:
     )
 
 
+def place_four_masters_plate(compact: list[dict]) -> None:
+    """Prefer the four-masters plate on folio 295 (odd), immediately before 結語.
+
+    Pagination often leaves a short litany page on 295 and the plate on 296;
+    swap those two leaves so the plate sits on 295 as requested.
+    """
+    idx = next(
+        (
+            i
+            for i, page in enumerate(compact)
+            if page.get("t") == "i" and page.get("img") == "four"
+        ),
+        None,
+    )
+    if idx is None or idx == 0:
+        return
+    prev = compact[idx - 1]
+    cur = compact[idx]
+    if prev.get("t") != "p" or prev.get("n") != 295 or cur.get("n") != 296:
+        return
+    compact[idx - 1], compact[idx] = cur, prev
+    for i in range(idx - 1, len(compact)):
+        compact[i]["n"] = i + 1
+        if "fo" in compact[i]:
+            compact[i]["fo"] = arabic_folio(i + 1)
+
+
 def write_carrier(plan_bytes: bytes, path: Path) -> None:
     signature = b"\x89PNG\r\n\x1a\n"
     ihdr = png_chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
@@ -922,6 +949,7 @@ def main() -> None:
     pages = paginate(items)
     compact = compact_pages(pages, book_title=book.get("title", "歸源手鏡"))
     apply_kinsoku_compact(compact)
+    place_four_masters_plate(compact)
     # Horizontal colophon on the next page after body (odd/right preferred).
     next_n = (compact[-1]["n"] + 1) if compact else 1
     if next_n % 2 == 0:
