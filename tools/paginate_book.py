@@ -29,7 +29,9 @@ BOTTOM_MM = 16
 EDITION = "test-book-5"
 
 # Line-start kinsoku: do not open a column with these.
-KINSKU_LINE_START = set("，。、：；！？）」』》︶﹂﹄…・")
+# Note: list bullet 「・」(from 「·」) is stripped before layout — do not treat as kinsoku,
+# or it will be moved to the previous column and appear as a stray black dot.
+KINSKU_LINE_START = set("，。、：；！？）」』》︶﹂﹄…")
 
 # Editorial / manuscript labels — never appear in the printed book.
 LABEL_RE = re.compile(
@@ -306,6 +308,12 @@ def build_items(book: dict) -> list[dict]:
         text = strip_spaces(paragraph["text"])
         if not text:
             continue
+        # Biography / list lines start with 「·」; strip so vertical layout has no
+        # orphan 「・」 (kinsoku used to shove them onto the previous column end).
+        if kind in ("body", "heading"):
+            text = re.sub(r"^[·•･・．.]+", "", text)
+            if not text:
+                continue
 
         if kind in ("volume", "chapter", "major"):
             # Use original spacing to detect title breaks (章␠題——副題).
