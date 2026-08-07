@@ -154,7 +154,11 @@ def classify_toc(text: str) -> str:
     """Match original Test Book TOC hierarchy: bold volumes, indented chapters."""
     if "總目錄" in text or text == "目錄":
         return "toc_title"
-    if re.match(r"^第.+卷", text) or text in ("自序", "附錄"):
+    if (
+        re.match(r"^第.+卷", text)
+        or text in ("自序", "附錄")
+        or (text.endswith("序") and "手鏡" in text)
+    ):
         return "toc_volume"
     return "toc_entry"
 
@@ -326,11 +330,11 @@ def build_items(book: dict) -> list[dict]:
                 items.append({"kind": "subhead", "text": text})
             continue
 
-        if "謹識" in text:
-            match = re.match(r"^(.+謹識)(.+)$", text)
-            if match:
-                items.append({"kind": "signature_name", "text": match.group(1)})
-                items.append({"kind": "signature_date", "text": match.group(2)})
+        if re.search(r"謹[識序]", text):
+            match = re.match(r"^(.+謹[識序])\s*(.+)$", text)
+            if match and match.group(2).strip():
+                items.append({"kind": "signature_name", "text": match.group(1).strip()})
+                items.append({"kind": "signature_date", "text": match.group(2).strip()})
             else:
                 items.append({"kind": "signature_name", "text": text})
             continue

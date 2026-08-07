@@ -1,4 +1,4 @@
-const HASH = "887beda9f801cfe3c0f701b97954f0d1df58da4b";
+const HASH = "0318f526f624255280aed3439943d91dee52ee7b";
 const PAGE_NAME = "Test Book 5";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
 if (!PAGE) throw new Error("missing Test Book 5");
