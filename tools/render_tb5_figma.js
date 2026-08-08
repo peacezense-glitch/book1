@@ -1,4 +1,4 @@
-const HASH = "c8be15188926c53b021f4c3ff208ede0dfc88f8e";
+const HASH = "10f3c5b47a968b0e3c077e3e63440ffd8433f50a";
 const COVER_HASH = "e30e2a3507acebc4b110935682888cf7c04a11fa";
 // Plate images (grayscale): 九天玄女 / 呂祖 / 四人
 const ILLUST_HASH = {
@@ -340,10 +340,10 @@ function addHText(fr, text, font, size, x, y, w, h, align, name) {
   node.textAlignHorizontal = align; node.textAutoResize = "NONE";
   node.resize(w, h); node.x = x; node.y = y; node.name = name;
 }
-// Colophon QR assets (user-supplied on TB5; locked for TB6+).
+// Colophon QR assets: B/W print plates with quiet zone (course + Youtube).
 const QR_HASH = {
-  course: "b909c95e1cd84e879cdd3b2b7df6cb25ceebb2cb",
-  youtube: "1fb8339ce479f1bafcbcddb8568c229df217429e",
+  course: "4e1ff3076a60e15435e6f294a18981cc5f6d3da9",
+  youtube: "e4b85d539ea2a68e7ab49a61311a67a25e366c83",
 };
 function addMetaRow(fr, line, font, size, x, y, contentW, labelW, name) {
   const idx = line.indexOf("／");
@@ -360,25 +360,37 @@ function placeColophonQrPair(fr, qr, marginX, y, contentW) {
   const data = qr || {};
   const course = data.course || {};
   const youtube = data.youtube || {};
-  const qrSize = 78;
-  const gap = 30;
-  const pairW = qrSize * 2 + gap;
+  // Matched pair: white plate + hairline + equal QR modules for print scan.
+  const qrSize = 72;
+  const pad = 7;
+  const cell = qrSize + pad * 2;
+  const gap = 28;
+  const pairW = cell * 2 + gap;
   const startX = marginX + (contentW - pairW) / 2;
   const mk = (hash, x, name) => {
+    const plate = figma.createRectangle();
+    fr.appendChild(plate);
+    plate.name = name + "-plate";
+    plate.resize(cell, cell);
+    plate.x = x;
+    plate.y = y;
+    plate.fills = [{ type: "SOLID", color: WHITE }];
+    plate.strokes = [{ type: "SOLID", color: { r: 0.55, g: 0.55, b: 0.55 } }];
+    plate.strokeWeight = 0.5;
     const img = figma.createRectangle();
     fr.appendChild(img);
     img.name = name;
     img.resize(qrSize, qrSize);
-    img.x = x;
-    img.y = y;
+    img.x = x + pad;
+    img.y = y + pad;
     img.fills = [{ type: "IMAGE", scaleMode: "FILL", imageHash: hash }];
   };
   mk(QR_HASH.course, startX, course.title || "講堂課程登記表");
-  mk(QR_HASH.youtube, startX + qrSize + gap, youtube.title || "Youtube");
-  y += qrSize + 6;
-  addHText(fr, course.caption || "daohk.com", REG, 7.5, startX - 4, y, qrSize + 8, 12, "CENTER", "colophon-qr-caption-course");
-  addHText(fr, youtube.caption || "Youtube", REG, 7.5, startX + qrSize + gap - 4, y, qrSize + 8, 12, "CENTER", "colophon-qr-caption-youtube");
-  return y + 16;
+  mk(QR_HASH.youtube, startX + cell + gap, youtube.title || "Youtube");
+  y += cell + 8;
+  addHText(fr, course.caption || "講堂課程登記表", REG, 7.5, startX - 6, y, cell + 12, 12, "CENTER", "colophon-qr-caption-course");
+  addHText(fr, youtube.caption || "Youtube", REG, 7.5, startX + cell + gap - 6, y, cell + 12, 12, "CENTER", "colophon-qr-caption-youtube");
+  return y + 18;
 }
 function renderColophon(fr, page) {
   // Remembered TB5 manual edits: no "Center" label, value column align, dual QR + captions.

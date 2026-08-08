@@ -823,11 +823,11 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
 
 
 def build_colophon_qr() -> dict:
-    """Dual QR block on the copyright page (course card + Youtube)."""
+    """Dual QR block on the copyright page (課程登記 + Youtube)."""
     return {
         "course": {
             "title": "講堂課程登記表",
-            "caption": "daohk.com",
+            "caption": "講堂課程登記表",
             "href": "https://www.daohk.com",
             "img": "course",
         },
