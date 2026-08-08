@@ -422,6 +422,7 @@ function renderColophon(fr, page) {
   for (const line of beforeLegal) {
     if (/Youtube|華玉講堂\s*課程$/.test(line)) continue;
     if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
+      y += 20; // extra air above the QR invite line
       addHText(fr, line, REG, 8, marginX, y, contentW, 12, "CENTER", "colophon-invite");
       y += 14;
       y = placeColophonQrPair(fr, page.qr, marginX, y, contentW);
