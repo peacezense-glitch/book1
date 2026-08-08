@@ -158,7 +158,7 @@ def classify_toc(text: str) -> str:
         return "toc_title"
     if (
         re.match(r"^第.+卷", text)
-        or text in ("自序", "附錄")
+        or text in ("自序", "序", "附錄")
         or (text.endswith("序") and "手鏡" in text)
     ):
         return "toc_volume"
@@ -888,6 +888,58 @@ def png_chunk(tag: bytes, data: bytes) -> bytes:
     )
 
 
+def absorb_short_body_pages(compact: list[dict], *, min_cols: int = 3) -> None:
+    """Merge nearly-empty body pages so we rarely leave a leaf with only 1–2 columns.
+
+    Prefer prepending a short page onto the next body page (keeps reading order).
+    If the next page cannot take it, append onto the previous body page when room.
+    """
+    i = 0
+    while i < len(compact):
+        page = compact[i]
+        if page.get("t") != "p":
+            i += 1
+            continue
+        cols = page.get("cols") or []
+        if not cols or len(cols) > min_cols:
+            i += 1
+            continue
+
+        def reindex(cols_list: list[dict]) -> list[dict]:
+            out = []
+            for j, col in enumerate(cols_list):
+                nc = dict(col)
+                nc["i"] = j
+                out.append(nc)
+            return out
+
+        merged = False
+        # 1) Prepend onto following body page.
+        if i + 1 < len(compact) and compact[i + 1].get("t") == "p":
+            nxt = compact[i + 1]
+            nxt_cols = nxt.get("cols") or []
+            if len(cols) + len(nxt_cols) <= COLS:
+                nxt["cols"] = reindex(cols + nxt_cols)
+                del compact[i]
+                merged = True
+        # 2) Else append onto previous body page if room.
+        if not merged and i > 0 and compact[i - 1].get("t") == "p":
+            prev = compact[i - 1]
+            prev_cols = prev.get("cols") or []
+            if len(prev_cols) + len(cols) <= COLS:
+                prev["cols"] = reindex(prev_cols + cols)
+                del compact[i]
+                merged = True
+                i -= 1
+        if merged:
+            for j in range(max(i - 1, 0), len(compact)):
+                compact[j]["n"] = j + 1
+                if "fo" in compact[j]:
+                    compact[j]["fo"] = arabic_folio(j + 1)
+            continue
+        i += 1
+
+
 def place_four_masters_plate(compact: list[dict]) -> None:
     """Prefer the four-masters plate on folio 295 (odd), immediately before 結語.
 
@@ -949,16 +1001,17 @@ def main() -> None:
     pages = paginate(items)
     compact = compact_pages(pages, book_title=book.get("title", "歸源手鏡"))
     apply_kinsoku_compact(compact)
+    absorb_short_body_pages(compact, min_cols=3)
     place_four_masters_plate(compact)
     # Horizontal colophon on the next page after body (odd/right preferred).
     next_n = (compact[-1]["n"] + 1) if compact else 1
+    # Prefer odd colophon, but use a rendered white blank (not a skipped hole).
     if next_n % 2 == 0:
-        # Keep 版權頁 on the right (odd) leaf when possible.
         compact.append(
             {
                 "n": next_n,
                 "t": "b",
-                "vh": "版權頁",
+                "vh": "",
                 "fo": arabic_folio(next_n),
             }
         )

@@ -1,10 +1,10 @@
-const HASH = "724f0a1ba6d6b292524d5e9eb37f015e98d46737";
+const HASH = "564e6604aea1b41664d00facda020e8dc7c8aa96";
 const COVER_HASH = "e30e2a3507acebc4b110935682888cf7c04a11fa";
 // Plate images (grayscale): 九天玄女 / 呂祖 / 四人
 const ILLUST_HASH = {
-  jiutian: "af6f3322c5acb3d08ca068f878cbb3d80cfc66a3",
-  luzu: "61413e9f7d0bb8e33bef6b170db8ce1719126395",
-  four: "9d19200a39556f941bbc62a7be820a58530031cd",
+  jiutian: "59c193cd3b38b2e495eb619b2794d4cd9f520535",
+  luzu: "2424ced292292c58f13c612266a0361a395ce240",
+  four: "5216d16a1cbc63cfba5ba932b0197e315c480c8c",
 };
 const PAGE_NAME = "Test Book 5";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
@@ -431,7 +431,6 @@ function renderColophon(fr, page) {
 const created = [];
 let blankPages = 0, titleCards = 0, colophonPages = 0;
 for (const page of pages) {
-  if (page.t === "b") { blankPages++; continue; }
   const n = page.n;
   const si = Math.floor((n - 1) / 2);
   const sp = ensureSpread(si);
@@ -444,12 +443,40 @@ for (const page of pages) {
   fr.clipsContent = true;
   fr.x = isOdd ? PAGE_W + SPREAD_GAP : 0;
   fr.y = 0;
+  if (page.t === "b") {
+    // White blank leaf (never leave a transparent/black facing page).
+    blankPages++;
+    addRunningHead(fr, page);
+    created.push(fr.id);
+    continue;
+  }
   if (page.t === "o") renderOpener(fr, page, isOdd);
   else if (page.t === "p") renderCols(fr, page.cols || [], isOdd);
   else if (page.t === "i") renderIllust(fr, page, isOdd);
   else if (page.t === "tc") { renderTitleCard(fr, page); titleCards++; }
   else if (page.t === "c") { renderColophon(fr, page); colophonPages++; }
   if (page.t !== "c") addRunningHead(fr, page);
+  created.push(fr.id);
+}
+// Any incomplete spread (missing a facing leaf) gets a white blank mate.
+for (const sp of PAGE.children.filter((c) => c.name.startsWith("對頁"))) {
+  const pageFrames = sp.children.filter((c) => /^P\d+/.test(c.name));
+  const odd = pageFrames.find((c) => parseInt(c.name.replace(/\D/g, ""), 10) % 2 === 1);
+  const even = pageFrames.find((c) => parseInt(c.name.replace(/\D/g, ""), 10) % 2 === 0);
+  if (odd && even) continue;
+  const fr = figma.createFrame();
+  sp.appendChild(fr);
+  let nGuess = 1;
+  if (odd) nGuess = parseInt(odd.name.replace(/\D/g, ""), 10) + 1;
+  else if (even) nGuess = parseInt(even.name.replace(/\D/g, ""), 10) - 1;
+  const isOdd = !odd;
+  fr.name = `P${String(Math.max(nGuess, 1)).padStart(3, "0")}-blank`;
+  fr.resize(PAGE_W, PAGE_H);
+  fr.fills = [{ type: "SOLID", color: WHITE }];
+  fr.clipsContent = true;
+  fr.x = isOdd ? PAGE_W + SPREAD_GAP : 0;
+  fr.y = 0;
+  blankPages++;
   created.push(fr.id);
 }
 const sample = PAGE.children.find((c) => c.name === "對頁1");
