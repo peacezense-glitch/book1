@@ -553,6 +553,9 @@ def paginate(items: list[dict]) -> list[dict]:
                 opener["img"] = "jiutian"
             elif item.get("level") == "volume" and clean.startswith("第五卷"):
                 opener["img"] = "luzu"
+            # 四人圖：附錄一標題前整頁插圖
+            if clean.startswith("附錄一"):
+                pages.append({"type": "illust", "img": "four"})
             pages.append(opener)
             continue
 
@@ -564,14 +567,6 @@ def paginate(items: list[dict]) -> list[dict]:
             place_styled_column(item["text"], "toc_bold", blank_before=False)
 
         elif kind in ("tip", "heading"):
-            # Full-page plate of the four masters immediately before 卷六結語 title.
-            if kind == "heading" and "第六卷結語" in item["text"]:
-                flush_full_pages()
-                if buf:
-                    pad_to_page_end()
-                    pages.append({"type": "body", "cells": buf})
-                    buf = []
-                pages.append({"type": "illust", "img": "four"})
             style = "tip" if kind == "tip" else "heading"
             # 本章實修功課：獨立起頁，避免落在頁中後段。
             if kind == "tip" and cols_used_in_page() > 0:
@@ -828,30 +823,12 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
 
 
 def build_colophon_qr() -> dict:
-    """B/W QR payload for the copyright page (講堂課程登記表 → daohk.com)."""
-    try:
-        import qrcode
-    except ImportError:
-        return {
-            "title": "講堂課程登記表",
-            "url": "www.daohk.com",
-            "href": "https://www.daohk.com",
-            "matrix": [],
-        }
-    qr = qrcode.QRCode(
-        version=None,
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=1,
-        border=2,
-    )
-    qr.add_data("https://www.daohk.com")
-    qr.make(fit=True)
-    matrix = [[1 if cell else 0 for cell in row] for row in qr.get_matrix()]
+    """Colophon QR uses the user-supplied 講堂課程登記表 card image in Figma."""
     return {
         "title": "講堂課程登記表",
         "url": "www.daohk.com",
         "href": "https://www.daohk.com",
-        "matrix": matrix,
+        "img": "qr",
     }
 
 
@@ -941,11 +918,7 @@ def absorb_short_body_pages(compact: list[dict], *, min_cols: int = 3) -> None:
 
 
 def place_four_masters_plate(compact: list[dict]) -> None:
-    """Prefer the four-masters plate on folio 295 (odd), immediately before 結語.
-
-    Pagination often leaves a short litany page on 295 and the plate on 296;
-    swap those two leaves so the plate sits on 295 as requested.
-    """
+    """Keep 四人圖 immediately before 附錄一; prefer an odd folio via blank insert."""
     idx = next(
         (
             i
@@ -954,14 +927,23 @@ def place_four_masters_plate(compact: list[dict]) -> None:
         ),
         None,
     )
-    if idx is None or idx == 0:
+    if idx is None:
         return
-    prev = compact[idx - 1]
     cur = compact[idx]
-    if prev.get("t") != "p" or prev.get("n") != 295 or cur.get("n") != 296:
+    if cur.get("n", 0) % 2 == 1:
         return
-    compact[idx - 1], compact[idx] = cur, prev
-    for i in range(idx - 1, len(compact)):
+    # Insert a white blank before the plate so it becomes odd without
+    # separating it from the following 附錄一 opener.
+    compact.insert(
+        idx,
+        {
+            "n": cur["n"],
+            "t": "b",
+            "vh": cur.get("vh") or "",
+            "fo": arabic_folio(cur["n"]),
+        },
+    )
+    for i in range(idx, len(compact)):
         compact[i]["n"] = i + 1
         if "fo" in compact[i]:
             compact[i]["fo"] = arabic_folio(i + 1)

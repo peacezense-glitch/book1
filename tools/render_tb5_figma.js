@@ -340,50 +340,19 @@ function addHText(fr, text, font, size, x, y, w, h, align, name) {
   node.textAlignHorizontal = align; node.textAutoResize = "NONE";
   node.resize(w, h); node.x = x; node.y = y; node.name = name;
 }
+// User-supplied 講堂課程登記表 card (title + QR + logo + URL already in image).
+const QR_HASH = "b909c95e1cd84e879cdd3b2b7df6cb25ceebb2cb";
 function placeColophonQr(fr, qr, marginX, y, contentW) {
-  const data = qr || {};
-  const title = data.title || "講堂課程登記表";
-  const url = data.url || "www.daohk.com";
-  const matrix = Array.isArray(data.matrix) ? data.matrix : [];
-  addHText(fr, title, BOLD, 10, marginX, y, contentW, 14, "CENTER", "colophon-qr-title");
-  y += 14; // title then QR flush (blank line is above this block)
-  const qrSize = 72;
+  const qrSize = 96;
   const qrX = marginX + (contentW - qrSize) / 2;
-  if (matrix.length) {
-    const n = matrix.length;
-    const cell = qrSize / n;
-    const parts = [
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${qrSize}" height="${qrSize}" shape-rendering="crispEdges">`,
-      `<rect width="100%" height="100%" fill="#ffffff"/>`
-    ];
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        if (!matrix[r][c]) continue;
-        parts.push(
-          `<rect x="${(c * cell).toFixed(3)}" y="${(r * cell).toFixed(3)}" width="${cell.toFixed(3)}" height="${cell.toFixed(3)}" fill="#000000"/>`
-        );
-      }
-    }
-    parts.push("</svg>");
-    const node = figma.createNodeFromSvg(parts.join(""));
-    fr.appendChild(node);
-    node.name = "colophon-qr";
-    node.x = qrX;
-    node.y = y;
-  } else {
-    const placeholder = figma.createRectangle();
-    fr.appendChild(placeholder);
-    placeholder.name = "colophon-qr";
-    placeholder.resize(qrSize, qrSize);
-    placeholder.x = qrX;
-    placeholder.y = y;
-    placeholder.fills = [];
-    placeholder.strokes = [{ type: "SOLID", color: BLACK }];
-    placeholder.strokeWeight = 1;
-  }
-  y += qrSize + 6;
-  addHText(fr, url, REG, 8, marginX, y, contentW, 12, "CENTER", "colophon-qr-url");
-  return y + 14;
+  const img = figma.createRectangle();
+  fr.appendChild(img);
+  img.name = "講堂課程登記表";
+  img.resize(qrSize, qrSize);
+  img.x = qrX;
+  img.y = y;
+  img.fills = [{ type: "IMAGE", scaleMode: "FILL", imageHash: QR_HASH }];
+  return y + qrSize + 14;
 }
 function renderColophon(fr, page) {
   const marginX = 26, bottomPad = 22 * PT, contentW = PAGE_W - marginX * 2;
