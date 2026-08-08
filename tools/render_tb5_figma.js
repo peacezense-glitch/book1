@@ -1,4 +1,4 @@
-const HASH = "0e0f059f4795dde9aea1c060611d4b38b168fbf0";
+const HASH = "c8be15188926c53b021f4c3ff208ede0dfc88f8e";
 const COVER_HASH = "e30e2a3507acebc4b110935682888cf7c04a11fa";
 // Plate images (grayscale): 九天玄女 / 呂祖 / 四人
 const ILLUST_HASH = {
