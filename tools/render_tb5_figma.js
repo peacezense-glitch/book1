@@ -6,9 +6,9 @@ const ILLUST_HASH = {
   luzu: "2424ced292292c58f13c612266a0361a395ce240",
   four: "5216d16a1cbc63cfba5ba932b0197e315c480c8c",
 };
-const PAGE_NAME = "Test Book 5";
+const PAGE_NAME = "Test Book 6";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
-if (!PAGE) throw new Error("missing Test Book 5");
+if (!PAGE) throw new Error("missing Test Book 6");
 await figma.setCurrentPageAsync(PAGE);
 for (const child of [...PAGE.children]) child.remove();
 await figma.loadFontAsync({ family: "Noto Serif TC", style: "Regular" });
@@ -340,58 +340,108 @@ function addHText(fr, text, font, size, x, y, w, h, align, name) {
   node.textAlignHorizontal = align; node.textAutoResize = "NONE";
   node.resize(w, h); node.x = x; node.y = y; node.name = name;
 }
-// User-supplied 講堂課程登記表 card (title + QR + logo + URL already in image).
-const QR_HASH = "b909c95e1cd84e879cdd3b2b7df6cb25ceebb2cb";
-function placeColophonQr(fr, qr, marginX, y, contentW) {
-  const qrSize = 96;
-  const qrX = marginX + (contentW - qrSize) / 2;
-  const img = figma.createRectangle();
-  fr.appendChild(img);
-  img.name = "講堂課程登記表";
-  img.resize(qrSize, qrSize);
-  img.x = qrX;
-  img.y = y;
-  img.fills = [{ type: "IMAGE", scaleMode: "FILL", imageHash: QR_HASH }];
-  return y + qrSize + 14;
+// Colophon QR assets (user-supplied on TB5; locked for TB6+).
+const QR_HASH = {
+  course: "b909c95e1cd84e879cdd3b2b7df6cb25ceebb2cb",
+  youtube: "1fb8339ce479f1bafcbcddb8568c229df217429e",
+};
+function addMetaRow(fr, line, font, size, x, y, contentW, labelW, name) {
+  const idx = line.indexOf("／");
+  if (idx < 0) {
+    addHText(fr, line, font, size, x, y, contentW, 12, "LEFT", name);
+    return;
+  }
+  const label = line.slice(0, idx + 1);
+  const value = line.slice(idx + 1).replace(/^\s+/, "");
+  addHText(fr, label, font, size, x, y, labelW, 12, "LEFT", name + "-label");
+  addHText(fr, value, font, size, x + labelW, y, Math.max(40, contentW - labelW), 12, "LEFT", name + "-value");
+}
+function placeColophonQrPair(fr, qr, marginX, y, contentW) {
+  const data = qr || {};
+  const course = data.course || {};
+  const youtube = data.youtube || {};
+  const qrSize = 78;
+  const gap = 30;
+  const pairW = qrSize * 2 + gap;
+  const startX = marginX + (contentW - pairW) / 2;
+  const mk = (hash, x, name) => {
+    const img = figma.createRectangle();
+    fr.appendChild(img);
+    img.name = name;
+    img.resize(qrSize, qrSize);
+    img.x = x;
+    img.y = y;
+    img.fills = [{ type: "IMAGE", scaleMode: "FILL", imageHash: hash }];
+  };
+  mk(QR_HASH.course, startX, course.title || "講堂課程登記表");
+  mk(QR_HASH.youtube, startX + qrSize + gap, youtube.title || "Youtube");
+  y += qrSize + 6;
+  addHText(fr, course.caption || "daohk.com", REG, 7.5, startX - 4, y, qrSize + 8, 12, "CENTER", "colophon-qr-caption-course");
+  addHText(fr, youtube.caption || "Youtube", REG, 7.5, startX + qrSize + gap - 4, y, qrSize + 8, 12, "CENTER", "colophon-qr-caption-youtube");
+  return y + 16;
 }
 function renderColophon(fr, page) {
-  const marginX = 26, bottomPad = 22 * PT, contentW = PAGE_W - marginX * 2;
+  // Remembered TB5 manual edits: no "Center" label, value column align, dual QR + captions.
+  const marginX = 26, bottomPad = 18 * PT, contentW = PAGE_W - marginX * 2, labelW = 105;
+  const indentX = marginX + labelW;
   let y = 28;
   addHText(fr, `《${page.title || "歸源手鏡"}》`, BOLD, 14, marginX, y, contentW, 22, "CENTER", "colophon-title");
-  y += 24;
-  if (page.series) { addHText(fr, `— ${page.series} —`, REG, 8.5, marginX, y, contentW, 12, "CENTER", "colophon-series"); y += 14; }
+  y += 26;
   const matter = page.matter || [];
   let i = 0;
   if (matter[0] && matter[0].includes("歸源手鏡")) i = 1;
-  const metaEnd = Math.min(i + 7, matter.length);
-  for (; i < metaEnd; i++) { addHText(fr, matter[i], REG, 8.5, marginX, y, contentW, 12, "LEFT", "colophon-meta"); y += 12; }
-  y += 6;
-  addHText(fr, "Center", BOLD, 8.5, marginX, y, contentW, 12, "LEFT", "colophon-center-label"); y += 13;
-  const centerEnd = Math.min(i + 10, matter.length);
-  for (; i < centerEnd; i++) { addHText(fr, matter[i], REG, 7.5, marginX, y, contentW, 11, "LEFT", "colophon-center"); y += 11; }
-  y += 6;
+  // Bibliographic meta (系列…資料提供)
+  while (i < matter.length && matter[i].includes("／") && !/^(版次|國際書號|圖書類別|特別鳴謝)／/.test(matter[i])) {
+    addMetaRow(fr, matter[i], REG, 8.5, marginX, y, contentW, labelW, "colophon-meta");
+    y += 12;
+    i++;
+  }
+  // Indented institute / 華玉講堂 contact block (no "Center" heading)
+  y += 4;
+  while (
+    i < matter.length &&
+    !matter[i].includes("／") &&
+    !/掃瞄二維碼|掃描二維碼|All Rights? Reserved|版權所有|免責聲明|Nothing may be reprinted|Youtube|華玉講堂\s*課程/i.test(matter[i])
+  ) {
+    addHText(fr, matter[i], REG, 7.5, indentX, y, contentW - labelW, 11, "LEFT", "colophon-center");
+    y += 11;
+    i++;
+  }
+  y += 8;
+  // Edition / ISBN / category / thanks
+  while (i < matter.length && matter[i].includes("／")) {
+    addMetaRow(fr, matter[i], REG, 8, marginX, y, contentW, labelW, "colophon-pub");
+    y += 12;
+    i++;
+  }
   const rest = matter.slice(i);
-  const legalStart = rest.findIndex((line) => /All Right Reserved|版權所有|免責聲明|Nothing may be reprinted/i.test(line));
+  const legalStart = rest.findIndex((line) => /All Rights? Reserved|版權所有|免責聲明|Nothing may be reprinted/i.test(line));
   const beforeLegal = legalStart === -1 ? rest : rest.slice(0, legalStart);
   const legal = legalStart === -1 ? [] : rest.slice(legalStart);
   let qrPlaced = false;
   for (const line of beforeLegal) {
     if (/Youtube|華玉講堂\s*課程$/.test(line)) continue;
+    if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
+      addHText(fr, line, REG, 8, marginX, y, contentW, 12, "CENTER", "colophon-invite");
+      y += 14;
+      y = placeColophonQrPair(fr, page.qr, marginX, y, contentW);
+      qrPlaced = true;
+      continue;
+    }
     addHText(fr, line, REG, 8, marginX, y, contentW, 12, "LEFT", "colophon-pub");
     y += 12;
-    if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
-      y += 14; // one blank line above QR block
-      y = placeColophonQr(fr, page.qr, marginX, y, contentW);
-      qrPlaced = true;
-    }
   }
   if (!qrPlaced) {
-    y += 14;
-    y = placeColophonQr(fr, page.qr, marginX, y, contentW);
+    y += 10;
+    y = placeColophonQrPair(fr, page.qr, marginX, y, contentW);
   }
-  const legalHeights = legal.map((line) => (line.length > 60 ? 36 : 16));
+  const legalHeights = legal.map((line) => {
+    if (line.length > 90) return 48;
+    if (line.length > 60) return 36;
+    return 14;
+  });
   const legalBlock = legalHeights.reduce((sum, h) => sum + h + 2, 0);
-  y = Math.min(y + 6, PAGE_H - bottomPad - legalBlock);
+  y = Math.min(y + 8, PAGE_H - bottomPad - legalBlock);
   for (let k = 0; k < legal.length; k++) {
     addHText(fr, legal[k], REG, 6.5, marginX, y, contentW, legalHeights[k], "LEFT", "colophon-legal");
     y += legalHeights[k] + 2;

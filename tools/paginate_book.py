@@ -17,7 +17,7 @@ import struct
 import zlib
 from pathlib import Path
 
-# Test Book 5: balanced side margins (binding + outer + text = trim width).
+# Test Book 6: balanced side margins (binding + outer + text = trim width).
 ROWS = 36
 COLS = 15
 CAP = ROWS * COLS
@@ -26,7 +26,7 @@ BINDING_MM = 21
 OUTER_MM = 20
 TOP_MM = 22  # align body / 大標頭 with independent title leaf
 BOTTOM_MM = 16
-EDITION = "test-book-5"
+EDITION = "test-book-6"
 
 # Line-start kinsoku: do not open a column with these.
 # Note: list bullet 「・」(from 「·」) is stripped before layout — do not treat as kinsoku,
@@ -823,23 +823,42 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
 
 
 def build_colophon_qr() -> dict:
-    """Colophon QR uses the user-supplied 講堂課程登記表 card image in Figma."""
+    """Dual QR block on the copyright page (course card + Youtube)."""
     return {
-        "title": "講堂課程登記表",
-        "url": "www.daohk.com",
-        "href": "https://www.daohk.com",
-        "img": "qr",
+        "course": {
+            "title": "講堂課程登記表",
+            "caption": "daohk.com",
+            "href": "https://www.daohk.com",
+            "img": "course",
+        },
+        "youtube": {
+            "title": "Youtube",
+            "caption": "Youtube",
+            "img": "youtube",
+        },
     }
+
+
+def polish_colophon_line(text: str) -> str:
+    """Light copyright-page copy edits (keep meaning; fix obvious slips)."""
+    text = text.replace("All Right Reserved", "All Rights Reserved")
+    text = text.replace("删除", "刪除")
+    text = text.replace("暫時停或編輯", "暫時停止或編輯")
+    text = text.replace("不保證或保證等資料", "不保證該等資料")
+    # Name lists only (排版／校對): ASCII slash → fullwidth; leave category "/" alone.
+    if re.match(r"^(排版及封面設計|校對)／", text) and "/" in text.split("／", 1)[-1]:
+        label, value = text.split("／", 1)
+        text = label + "／" + value.replace("/", "／")
+    return text
 
 
 def build_colophon_page(book: dict, page_num: int) -> dict:
     """Horizontal copyright page payload (traditional: only this page is 橫排)."""
-    # Keep original spacing — English needs spaces (unlike vertical body).
-    # Drop placeholder lines that the QR graphic replaces.
+    # Drop placeholder lines replaced by the dual QR graphics + captions.
     skip = {"華玉講堂Youtube", "華玉講堂 課程", "華玉講堂課程"}
     matter = []
     for line in book.get("backMatter", []):
-        text = (line if isinstance(line, str) else str(line)).strip()
+        text = polish_colophon_line((line if isinstance(line, str) else str(line)).strip())
         if text and text not in skip:
             matter.append(text)
     return {
