@@ -76,4 +76,15 @@ python3 tools/paginate_book.py
 2. 按頁碼順序匯出 PDF（右奇左偶）
 3. 確認成品為 152 × 230 mm、字體已嵌入、內容為黑白
 
+## Ebook PDF（Figma 版面）
+
+從 **Test Book 6** 逐葉匯出並合併（封面＋P001–P318，全彩封面／宣傳頁）：
+
+```bash
+# 1) 在 Figma 取得葉面清單 → data/ebook-export-manifest.json（agent 可自動生成）
+# 2) 逐葉 download_assets (pdf, scale 2) → exports/ebook-pages/
+python3 tools/merge_ebook_pdf.py
+# → exports/歸源手鏡-ebook.pdf
+```
+
 EPUB 應由 DOCX／結構化書稿另外生成，不要從 Figma PDF 反向轉換。
