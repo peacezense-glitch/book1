@@ -1,0 +1,15 @@
+{
+  "name": "Guiyuan Vertical Book",
+  "id": "guiyuan-vertical-book-generator",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": [
+      "https://raw.githubusercontent.com"
+    ],
+    "reasoning": "Load book-data.json from the GitHub repository when the local file picker is not used."
+  }
+}
