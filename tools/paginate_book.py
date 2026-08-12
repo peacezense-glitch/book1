@@ -1017,6 +1017,36 @@ def main() -> None:
             }
         )
         next_n += 1
+    # Circular cover art (此圓) as full-bleed leaf immediately before 版權頁.
+    # Keeps 版權頁 as the formal last page; plate prefers an odd folio.
+    compact.append(
+        {
+            "n": next_n,
+            "t": "i",
+            "img": "endcircle",
+            "bleed": True,
+            "vh": "",
+            "fo": arabic_folio(next_n),
+        }
+    )
+    next_n += 1
+    # If endcircle landed even, the following colophon is odd — fine.
+    # If we want endcircle odd and it is even, insert a blank before it.
+    if compact[-1]["n"] % 2 == 0:
+        # Move plate to odd: insert blank before the plate we just appended.
+        plate = compact.pop()
+        compact.append(
+            {
+                "n": plate["n"],
+                "t": "b",
+                "vh": "",
+                "fo": arabic_folio(plate["n"]),
+            }
+        )
+        plate["n"] = plate["n"] + 1
+        plate["fo"] = arabic_folio(plate["n"])
+        compact.append(plate)
+        next_n = plate["n"] + 1
     compact.append(build_colophon_page(book, next_n))
     plan = {
         "meta": {

@@ -1,10 +1,12 @@
-const HASH = "10f3c5b47a968b0e3c077e3e63440ffd8433f50a";
+const HASH = "1851caf0cb43145150a1d0f947a34820f0e08dd0";
 const COVER_HASH = "e30e2a3507acebc4b110935682888cf7c04a11fa";
 // Plate images (grayscale): 九天玄女 / 呂祖 / 四人
 const ILLUST_HASH = {
   jiutian: "59c193cd3b38b2e495eb619b2794d4cd9f520535",
   luzu: "2424ced292292c58f13c612266a0361a395ce240",
   four: "5216d16a1cbc63cfba5ba932b0197e315c480c8c",
+  // Circular cover art reused as end leaf before 版權頁 (此圓).
+  endcircle: "e30e2a3507acebc4b110935682888cf7c04a11fa",
 };
 const PAGE_NAME = "Test Book 6";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
@@ -263,7 +265,21 @@ function placeIllust(fr, imgKey, opts) {
   return node;
 }
 function renderIllust(fr, page, isOdd) {
-  placeIllust(fr, page.img || "", { top: TOP, bottomPad: 16 * PT, isOdd });
+  const imgKey = page.img || "";
+  // End leaf (circular cover art): fit full composition so the circle is not cropped.
+  if (imgKey === "endcircle" || page.bleed) {
+    const hash = ILLUST_HASH[imgKey] || COVER_HASH;
+    if (!hash) return;
+    const node = figma.createRectangle();
+    fr.appendChild(node);
+    node.name = `插圖-${imgKey || "bleed"}`;
+    node.resize(PAGE_W, PAGE_H);
+    node.x = 0;
+    node.y = 0;
+    node.fills = [{ type: "IMAGE", imageHash: hash, scaleMode: "FIT" }];
+    return;
+  }
+  placeIllust(fr, imgKey, { top: TOP, bottomPad: 16 * PT, isOdd });
 }
 function renderTitleCard(fr, page) {
   const title = String(page.title || "");
@@ -487,7 +503,8 @@ for (const page of pages) {
   else if (page.t === "i") renderIllust(fr, page, isOdd);
   else if (page.t === "tc") { renderTitleCard(fr, page); titleCards++; }
   else if (page.t === "c") { renderColophon(fr, page); colophonPages++; }
-  if (page.t !== "c") addRunningHead(fr, page);
+  // Full-bleed end circle has no running head.
+  if (page.t !== "c" && !(page.t === "i" && page.img === "endcircle")) addRunningHead(fr, page);
   created.push(fr.id);
 }
 // Any incomplete spread (missing a facing leaf) gets a white blank mate.
