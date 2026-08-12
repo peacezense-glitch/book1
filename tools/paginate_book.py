@@ -1017,21 +1017,20 @@ def main() -> None:
             }
         )
         next_n += 1
-    # Circular cover art (此圓) as full-bleed leaf immediately before 版權頁.
-    # Keeps 版權頁 as the formal last page; plate prefers an odd folio.
+    # Full-color 華玉講堂 promo plate before 版權頁 (ebook + color print).
     compact.append(
         {
             "n": next_n,
             "t": "i",
-            "img": "endcircle",
+            "img": "promo",
             "bleed": True,
             "vh": "",
             "fo": arabic_folio(next_n),
         }
     )
     next_n += 1
-    # If endcircle landed even, the following colophon is odd — fine.
-    # If we want endcircle odd and it is even, insert a blank before it.
+    # If promo landed even, the following colophon is odd — fine.
+    # If we want promo odd and it is even, insert a blank before it.
     if compact[-1]["n"] % 2 == 0:
         # Move plate to odd: insert blank before the plate we just appended.
         plate = compact.pop()

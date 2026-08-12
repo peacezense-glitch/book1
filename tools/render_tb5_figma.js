@@ -1,12 +1,12 @@
-const HASH = "1851caf0cb43145150a1d0f947a34820f0e08dd0";
-const COVER_HASH = "e30e2a3507acebc4b110935682888cf7c04a11fa";
-// Plate images (grayscale): 九天玄女 / 呂祖 / 四人
+const HASH = "c554069e1d50b70986e4c3d8e61c3dfc31c449b4";
+const COVER_HASH = "907191450a88f377b2902a9ad389fee0ced22c75";
+// Plate images: 九天玄女 / 呂祖 / 四人 (B/W) + 華玉講堂 promo (full color).
 const ILLUST_HASH = {
   jiutian: "59c193cd3b38b2e495eb619b2794d4cd9f520535",
   luzu: "2424ced292292c58f13c612266a0361a395ce240",
   four: "5216d16a1cbc63cfba5ba932b0197e315c480c8c",
-  // Circular cover art reused as end leaf before 版權頁 (此圓).
-  endcircle: "e30e2a3507acebc4b110935682888cf7c04a11fa",
+  promo: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65",
+  endcircle: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65", // legacy alias
 };
 const PAGE_NAME = "Test Book 6";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
@@ -266,9 +266,9 @@ function placeIllust(fr, imgKey, opts) {
 }
 function renderIllust(fr, page, isOdd) {
   const imgKey = page.img || "";
-  // End leaf (circular cover art): fit full composition so the circle is not cropped.
-  if (imgKey === "endcircle" || page.bleed) {
-    const hash = ILLUST_HASH[imgKey] || COVER_HASH;
+  // Full-color promo / end leaf: edge-to-edge (ebook + color print).
+  if (imgKey === "promo" || imgKey === "endcircle" || page.bleed) {
+    const hash = ILLUST_HASH[imgKey] || ILLUST_HASH.promo || COVER_HASH;
     if (!hash) return;
     const node = figma.createRectangle();
     fr.appendChild(node);
@@ -276,7 +276,7 @@ function renderIllust(fr, page, isOdd) {
     node.resize(PAGE_W, PAGE_H);
     node.x = 0;
     node.y = 0;
-    node.fills = [{ type: "IMAGE", imageHash: hash, scaleMode: "FIT" }];
+    node.fills = [{ type: "IMAGE", imageHash: hash, scaleMode: "FILL" }];
     return;
   }
   placeIllust(fr, imgKey, { top: TOP, bottomPad: 16 * PT, isOdd });
@@ -503,8 +503,8 @@ for (const page of pages) {
   else if (page.t === "i") renderIllust(fr, page, isOdd);
   else if (page.t === "tc") { renderTitleCard(fr, page); titleCards++; }
   else if (page.t === "c") { renderColophon(fr, page); colophonPages++; }
-  // Full-bleed end circle has no running head.
-  if (page.t !== "c" && !(page.t === "i" && page.img === "endcircle")) addRunningHead(fr, page);
+  // Full-color promo plate has no running head.
+  if (page.t !== "c" && !(page.t === "i" && (page.img === "promo" || page.img === "endcircle"))) addRunningHead(fr, page);
   created.push(fr.id);
 }
 // Any incomplete spread (missing a facing leaf) gets a white blank mate.
