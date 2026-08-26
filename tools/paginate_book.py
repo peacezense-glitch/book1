@@ -2,7 +2,7 @@
 """Paginate《歸源手鏡》into vertical RTL page plan for Figma.
 
 Binding: odd pages on the RIGHT, even pages on the LEFT (直排右翻).
-Body metrics default to 10.5 pt / 14.7 lh / 15×32 grid.
+Body metrics default to 10 pt / 14 lh / 15×36 grid.
 
 Typography is semantic: manuscript labels (e.g.「副標題：」) are never
 printed; role (書名／副題／小標題／提示／落款…) drives weight, size, indent.
@@ -17,7 +17,7 @@ import struct
 import zlib
 from pathlib import Path
 
-# Test Book 7: balanced side margins (binding + outer + text = trim width).
+# Test Book 8: body 10 pt (was 10.5); titles/heads scale ×10/10.5.
 ROWS = 36
 COLS = 15
 CAP = ROWS * COLS
@@ -26,7 +26,11 @@ BINDING_MM = 21
 OUTER_MM = 20
 TOP_MM = 22  # align body / 大標頭 with independent title leaf
 BOTTOM_MM = 16
-EDITION = "test-book-7"
+EDITION = "test-book-8"
+BODY_FS = 10.0
+BODY_LH = 14.0
+CW_PT = 12.5  # was 13.125 at 10.5 pt
+CP_PT = 21.55  # column pitch kept for margin geometry
 
 # Line-start kinsoku: do not open a column with these.
 # Note: list bullet 「・」(from 「·」) is stripped before layout — do not treat as kinsoku,
@@ -117,30 +121,31 @@ VERTICAL_FORMS = {
 # Style codes embedded in pages-plan / carrier for Figma render.
 STYLE = {
     "body": "0",
-    "heading": "1",  # 小標題 一、… — Bold 11
-    "tip": "2",  # 提示／功課標 — Bold 11
+    "heading": "1",  # 小標題 一、… — Bold 10.5
+    "tip": "2",  # 提示／功課標 — Bold 10.5
     "spacer": "3",
     "pad": "4",
-    "toc_bold": "5",  # TOC volume/title — Bold 11
-    "toc_reg": "6",  # TOC chapter — Regular 11 + indent
-    "sign": "7",  # 落款署名 — Bold 12
-    "sign_date": "8",  # 落款年月 — Regular 10.5
-    "book_title": "9",  # 書名 — Bold 12
-    "book_sub": "a",  # 副題（無「副標題」二字）— Regular 11
-    "subhead": "b",  # 次級標 — Bold 10.5 + indent
+    "toc_bold": "5",  # TOC volume/title — Bold 10.5
+    "toc_reg": "6",  # TOC chapter — Regular 10.5 + indent
+    "sign": "7",  # 落款署名 — Bold 11.5
+    "sign_date": "8",  # 落款年月 — Regular 10
+    "book_title": "9",  # 書名 — Bold 11.5
+    "book_sub": "a",  # 副題（無「副標題」二字）— Regular 10.5
+    "subhead": "b",  # 次級標 — Bold 10 + indent
 }
 
+# TB8 type ramp: body 10.5→10; others × (10/10.5), rounded to 0.5.
 FONT_SIZE = {
-    "0": 10.5,
-    "1": 11,
-    "2": 11,
-    "5": 11,
-    "6": 11,
-    "7": 12,
-    "8": 10.5,
-    "9": 12,
-    "a": 11,
-    "b": 10.5,
+    "0": 10,
+    "1": 10.5,
+    "2": 10.5,
+    "5": 10.5,
+    "6": 10.5,
+    "7": 11.5,
+    "8": 10,
+    "9": 11.5,
+    "a": 10.5,
+    "b": 10,
 }
 
 
@@ -833,8 +838,8 @@ def compact_pages(pages: list[dict], *, book_title: str = "歸源手鏡") -> lis
                 if indent:
                     entry["d"] = indent
                 sample_style = style[0] if style else "0"
-                fs = FONT_SIZE.get(sample_style, 10.5)
-                if fs != 10.5:
+                fs = FONT_SIZE.get(sample_style, BODY_FS)
+                if fs != BODY_FS:
                     entry["fs"] = fs
                 cols.append(entry)
             compact.append(
@@ -1130,16 +1135,16 @@ def main() -> None:
         "meta": {
             "rows": ROWS,
             "cols": COLS,
-            "fs": 10.5,
-            "tocFs": 11,
-            "headFs": 11,
-            "tipFs": 11,
-            "signFs": 12,
-            "titleFs": 12,
-            "subFs": 11,
-            "lh": 14.7,
-            "cp": 21.55,
-            "cw": 13.125,
+            "fs": BODY_FS,
+            "tocFs": FONT_SIZE["5"],
+            "headFs": FONT_SIZE["1"],
+            "tipFs": FONT_SIZE["2"],
+            "signFs": FONT_SIZE["7"],
+            "titleFs": FONT_SIZE["9"],
+            "subFs": FONT_SIZE["a"],
+            "lh": BODY_LH,
+            "cp": CP_PT,
+            "cw": CW_PT,
             "bindingMm": BINDING_MM,
             "outerMm": OUTER_MM,
             "topMm": TOP_MM,

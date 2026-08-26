@@ -1,4 +1,4 @@
-const HASH = "46b11036eddc414fd11e8d577fd13c1b5085c733";
+const HASH = "33efbb3d1d4672e5ace927aa3448b289f59874d4";
 const COVER_HASH = "907191450a88f377b2902a9ad389fee0ced22c75";
 // Plate images: 九天玄女 / 呂祖 / 四人 (B/W) + 華玉講堂 promo (full color).
 const ILLUST_HASH = {
@@ -8,9 +8,9 @@ const ILLUST_HASH = {
   promo: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65",
   endcircle: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65", // legacy alias
 };
-const PAGE_NAME = "Test Book 7";
+const PAGE_NAME = "Test Book 8";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
-if (!PAGE) throw new Error("missing Test Book 7");
+if (!PAGE) throw new Error("missing Test Book 8");
 await figma.setCurrentPageAsync(PAGE);
 for (const child of [...PAGE.children]) child.remove();
 await figma.loadFontAsync({ family: "Noto Serif TC", style: "Regular" });
@@ -20,7 +20,8 @@ const BOLD = { family: "Noto Serif TC", style: "Bold" };
 const PT = 72 / 25.4;
 const PAGE_W = 152 * PT;
 const PAGE_H = 230 * PT;
-const FS = 10.5, LH = 14.7, CP = 21.55, CW = 13.125, COLS = 15;
+// TB8: body 10.5→10; titles/heads ×10/10.5 (rounded to 0.5).
+const FS = 10, LH = 14, CP = 21.55, CW = 12.5, COLS = 15;
 const INNER = 21 * PT, TOP = 22 * PT;
 const GAP_BODY = 5 * PT, GAP_FOLIO = 10 * PT;
 const SPREAD_GAP = 6 * PT;
@@ -28,7 +29,8 @@ const OPENER_TOP = 22 * PT;
 const VOL_GAP = 5 * PT;
 const BLACK = { r: 0, g: 0, b: 0 }, WHITE = { r: 1, g: 1, b: 1 };
 const BOLD_STYLES = new Set(["1", "2", "5", "7", "9", "b"]);
-const STYLE_FS = { "0": 10.5, "1": 11, "2": 11, "5": 11, "6": 11, "7": 12, "8": 10.5, "9": 12, a: 11, b: 10.5 };
+const STYLE_FS = { "0": 10, "1": 10.5, "2": 10.5, "5": 10.5, "6": 10.5, "7": 11.5, "8": 10, "9": 11.5, a: 10.5, b: 10 };
+const HEAD_FS = 7.5, HEAD_LH = 10.5, HEAD_W = 9.5;
 function pageSideMargins() {
   const textBlockW = (COLS - 1) * CP + CW;
   const inner = INNER;
@@ -110,7 +112,7 @@ function addRunningHead(fr, page) {
   const { inner, outer, textBlockW } = pageSideMargins();
   const [head, sub] = splitRunningHead(String(page.vh || ""));
   const folio = String(page.fo || "");
-  const lineHeight = 11, width = 10;
+  const lineHeight = HEAD_LH, width = HEAD_W;
   const headChars = Array.from(head).filter(Boolean);
   const subChars = Array.from(sub).filter(Boolean);
   const folioChars = Array.from(folio);
@@ -124,7 +126,7 @@ function addRunningHead(fr, page) {
   if (headChars.length) {
     const node = figma.createText();
     fr.appendChild(node);
-    node.fontName = REG; node.fontSize = 8;
+    node.fontName = REG; node.fontSize = HEAD_FS;
     node.characters = headChars.join("\n");
     node.fills = [{ type: "SOLID", color: BLACK }];
     node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "CENTER";
@@ -135,7 +137,7 @@ function addRunningHead(fr, page) {
   if (subChars.length) {
     const node = figma.createText();
     fr.appendChild(node);
-    node.fontName = REG; node.fontSize = 8;
+    node.fontName = REG; node.fontSize = HEAD_FS;
     node.characters = subChars.join("\n");
     node.fills = [{ type: "SOLID", color: BLACK }];
     node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "CENTER";
@@ -146,7 +148,7 @@ function addRunningHead(fr, page) {
   if (folioChars.length) {
     const node = figma.createText();
     fr.appendChild(node);
-    node.fontName = REG; node.fontSize = 8;
+    node.fontName = REG; node.fontSize = HEAD_FS;
     node.characters = folioChars.join("\n");
     node.fills = [{ type: "SOLID", color: BLACK }];
     node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "CENTER";
@@ -197,9 +199,9 @@ function renderOpener(fr, page, isOdd) {
     return;
   }
   const lines = page.ln && page.ln.length ? page.ln : [String(page.tx || "")];
-  // Chapter openers match volume size (18); 自序/major stays slightly smaller.
-  const fs = page.lv === "major" ? 16 : 18;
-  const lh = page.lv === "major" ? 23 : 27;
+  // Chapter openers match volume size; TB8 scaled ×10/10.5 from 18/16.
+  const fs = page.lv === "major" ? 15 : 17;
+  const lh = page.lv === "major" ? 22 : 26;
   const colW = 28, pitch = 37;
   const n = Math.max(lines.length, 1);
   const groupW = colW + (n - 1) * pitch;
@@ -284,7 +286,7 @@ function renderIllust(fr, page, isOdd) {
 function renderTitleCard(fr, page) {
   const title = String(page.title || "");
   const subtitle = String(page.sub || "");
-  const titleFs = 18, titleLh = 28, subFs = 11, subLh = 18;
+  const titleFs = 17, titleLh = 27, subFs = 10.5, subLh = 17;
   const colW = 28, pitch = 40, subGap = 18;
   let titleCols = [];
   const colonIdx = Math.max(title.indexOf("："), title.indexOf(":"));
