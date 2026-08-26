@@ -1,4 +1,4 @@
-const HASH = "c554069e1d50b70986e4c3d8e61c3dfc31c449b4";
+const HASH = "46b11036eddc414fd11e8d577fd13c1b5085c733";
 const COVER_HASH = "907191450a88f377b2902a9ad389fee0ced22c75";
 // Plate images: 九天玄女 / 呂祖 / 四人 (B/W) + 華玉講堂 promo (full color).
 const ILLUST_HASH = {
@@ -8,9 +8,9 @@ const ILLUST_HASH = {
   promo: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65",
   endcircle: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65", // legacy alias
 };
-const PAGE_NAME = "Test Book 6";
+const PAGE_NAME = "Test Book 7";
 const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
-if (!PAGE) throw new Error("missing Test Book 6");
+if (!PAGE) throw new Error("missing Test Book 7");
 await figma.setCurrentPageAsync(PAGE);
 for (const child of [...PAGE.children]) child.remove();
 await figma.loadFontAsync({ family: "Noto Serif TC", style: "Regular" });

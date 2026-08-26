@@ -17,7 +17,7 @@ import struct
 import zlib
 from pathlib import Path
 
-# Test Book 6: balanced side margins (binding + outer + text = trim width).
+# Test Book 7: balanced side margins (binding + outer + text = trim width).
 ROWS = 36
 COLS = 15
 CAP = ROWS * COLS
@@ -26,7 +26,7 @@ BINDING_MM = 21
 OUTER_MM = 20
 TOP_MM = 22  # align body / 大標頭 with independent title leaf
 BOTTOM_MM = 16
-EDITION = "test-book-6"
+EDITION = "test-book-7"
 
 # Line-start kinsoku: do not open a column with these.
 # Note: list bullet 「・」(from 「·」) is stripped before layout — do not treat as kinsoku,
@@ -65,8 +65,27 @@ NAME_LABEL_RE = re.compile(
 APPENDIX_RE = re.compile(r"^附錄[一二三四][：:]")
 PREFACE_SECTION_RE = re.compile(r"^(序言|前言)[：:]")
 SECTION_HEAD_RE = re.compile(r"^[一二三四五六七八九十]+、")
-ARABIC_LIST_HEAD_RE = re.compile(r"^\d+\.\s*")
+ARABIC_LIST_HEAD_RE = re.compile(r"^\d+[．.]\s*")
+# Short numbered process labels (e.g.「1．生疑：…」) → bold subhead, not body.
+ARABIC_PROCESS_RE = re.compile(r"^\d+[．.]\s*[\u4e00-\u9fff]{1,6}：")
 BOOK_TITLE_RE = re.compile(r"^︽.+︾$")
+
+
+def normalize_shi_to_shen(text: str) -> str:
+    """Replace 什→甚 everywhere except the name 鳩摩羅什."""
+    parts = re.split(r"(鳩摩羅什)", text)
+    out: list[str] = []
+    for part in parts:
+        if part == "鳩摩羅什":
+            out.append(part)
+        else:
+            out.append(part.replace("什", "甚"))
+    return "".join(out)
+
+
+def normalize_arabic_list_dot(text: str) -> str:
+    """Use fullwidth ． after Arabic list numbers (1．生疑)."""
+    return re.sub(r"^(\d+)\.\s*", r"\1．", text)
 
 VERTICAL_FORMS = {
     # Comma/period/colon stay fullwidth (Test Book 2): they center in the cell.
@@ -276,6 +295,10 @@ def classify_body_line(text: str) -> dict:
     if NAME_LABEL_RE.match(text):
         return {"kind": "subhead", "text": text}
 
+    # Numbered process steps (1．生疑：…) → bold + indent, aligned as subheads.
+    if ARABIC_PROCESS_RE.match(text) and len(text) <= 45:
+        return {"kind": "subhead", "text": normalize_arabic_list_dot(text)}
+
     if SUBHEAD_RE.match(text) and len(text) <= 28:
         return {"kind": "subhead", "text": text}
 
@@ -295,6 +318,7 @@ def build_items(book: dict) -> list[dict]:
             break
         text = strip_spaces(paragraph["text"])
         text = re.sub(r"^[·•･・．.]+", "", text)
+        text = normalize_shi_to_shen(text)
         if not text:
             continue
         if "全書內容總結" in text:
@@ -305,7 +329,7 @@ def build_items(book: dict) -> list[dict]:
     end = 2098  # before duplicate colophon dump in paragraphs
     for paragraph in paragraphs[start:end]:
         kind = paragraph["kind"]
-        text = strip_spaces(paragraph["text"])
+        text = strip_spaces(normalize_shi_to_shen(paragraph["text"]))
         if not text:
             continue
         # Biography / list lines start with 「·」; strip so vertical layout has no
@@ -314,10 +338,11 @@ def build_items(book: dict) -> list[dict]:
             text = re.sub(r"^[·•･・．.]+", "", text)
             if not text:
                 continue
+            text = normalize_arabic_list_dot(text)
 
         if kind in ("volume", "chapter", "major"):
             # Use original spacing to detect title breaks (章␠題——副題).
-            original = paragraph["text"].strip()
+            original = normalize_shi_to_shen(paragraph["text"].strip())
             items.append(
                 {
                     "kind": "opener",
@@ -578,8 +603,10 @@ def paginate(items: list[dict]) -> list[dict]:
             place_styled_column(item["text"], "toc_reg", indent=2)
 
         elif kind == "subhead":
+            # Numbered process steps (1．生疑：…) share top alignment (indent 0).
+            indent = 0 if ARABIC_PROCESS_RE.match(item["text"]) else 1
             place_styled_column(
-                item["text"], "subhead", blank_before=False, indent=1, keep_cols=2
+                item["text"], "subhead", blank_before=False, indent=indent, keep_cols=2
             )
 
         elif kind == "book_title":
@@ -839,6 +866,55 @@ def build_colophon_qr() -> dict:
     }
 
 
+def apply_quote_block_indent(compact: list[dict]) -> None:
+    """Indent middle/closing columns of multi-column dialogue quotes by one space.
+
+    Opening column keeps ﹁ at the top; subsequent columns get d+=1 so their
+    first glyph aligns with the character after ﹁ (文字退一空格對齊).
+    """
+
+    def is_body_col(col: dict) -> bool:
+        s = str(col.get("s", "0"))
+        return s == "0" or (len(s) > 1 and set(s) <= {"0"})
+
+    for page in compact:
+        if page.get("t") != "p":
+            continue
+        cols = page.get("cols") or []
+        if not cols:
+            continue
+        # Work in visual/right-to-left index order already stored as i ascending
+        # from right (col 0 = rightmost). Scan in list order.
+        i = 0
+        while i < len(cols):
+            col = cols[i]
+            text = col.get("c") or ""
+            if not (is_body_col(col) and text.startswith("﹁")):
+                i += 1
+                continue
+            # Find end of quote block (column ending with ﹂).
+            j = i
+            while j < len(cols):
+                cj = cols[j]
+                tj = cj.get("c") or ""
+                if not is_body_col(cj):
+                    break
+                if "﹂" in tj:
+                    break
+                j += 1
+            else:
+                i += 1
+                continue
+            if j >= len(cols) or "﹂" not in (cols[j].get("c") or ""):
+                i += 1
+                continue
+            # Need at least two columns for cross-column alignment.
+            if j > i:
+                for k in range(i + 1, j + 1):
+                    cols[k]["d"] = int(cols[k].get("d") or 0) + 1
+            i = j + 1
+
+
 def polish_colophon_line(text: str) -> str:
     """Light copyright-page copy edits (keep meaning; fix obvious slips)."""
     text = text.replace("All Right Reserved", "All Rights Reserved")
@@ -858,7 +934,9 @@ def build_colophon_page(book: dict, page_num: int) -> dict:
     skip = {"華玉講堂Youtube", "華玉講堂 課程", "華玉講堂課程"}
     matter = []
     for line in book.get("backMatter", []):
-        text = polish_colophon_line((line if isinstance(line, str) else str(line)).strip())
+        text = polish_colophon_line(
+            normalize_shi_to_shen((line if isinstance(line, str) else str(line)).strip())
+        )
         if text and text not in skip:
             matter.append(text)
     return {
@@ -1003,6 +1081,7 @@ def main() -> None:
     compact = compact_pages(pages, book_title=book.get("title", "歸源手鏡"))
     apply_kinsoku_compact(compact)
     absorb_short_body_pages(compact, min_cols=3)
+    apply_quote_block_indent(compact)
     place_four_masters_plate(compact)
     # Horizontal colophon on the next page after body (odd/right preferred).
     next_n = (compact[-1]["n"] + 1) if compact else 1
