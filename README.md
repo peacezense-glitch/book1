@@ -75,13 +75,24 @@ python3 tools/paginate_book.py
 
 ## 印刷 PDF
 
-1. 在 Figma 選取對頁／頁面畫框
-2. 按頁碼順序匯出 PDF（右奇左偶）
-3. 確認成品為 152 × 230 mm、字體已嵌入、內容為黑白
+成品 **152 × 230 mm**；印刷檔另加 **四周 3 mm 出血**（Media **158 × 236 mm**），並轉 **CMYK**。
+
+```bash
+# 葉面已匯出至 exports/ebook-pages/ 後：
+python3 tools/merge_ebook_pdf.py
+# → exports/歸源手鏡-ebook.pdf（RGB／螢幕／ebook）
+
+python3 tools/build_print_pdf.py
+# → exports/歸源手鏡-print-cmyk-bleed3mm.pdf（CMYK＋3mm 出血）
+```
+
+- 封面／宣傳頁／插圖頁：內容放大填滿出血
+- 其餘內文頁：置中，出血為白邊
+- 確認字體已嵌入；正文為黑字白底
 
 ## Ebook PDF（Figma 版面）
 
-從 **Test Book 6** 逐葉匯出並合併（封面＋P001–P318，全彩封面／宣傳頁）：
+從 **Test Book 8** 逐葉匯出並合併（封面＋P001–P318；封面為更新後圖檔）：
 
 ```bash
 # 1) 在 Figma 取得葉面清單 → data/ebook-export-manifest.json（agent 可自動生成）
