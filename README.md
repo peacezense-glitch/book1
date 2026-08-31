@@ -92,7 +92,7 @@ python3 tools/build_print_pdf.py
 
 ## Ebook PDF（Figma 版面）
 
-從 **Test Book 8** 逐葉匯出並合併（封面＋P001–P318；封面為更新後圖檔）：
+從 **Test Book 8** 逐葉匯出並合併（封面＋P001–P296；15 欄×42 字、下邊 10 mm）：
 
 ```bash
 # 1) 在 Figma 取得葉面清單 → data/ebook-export-manifest.json（agent 可自動生成）
