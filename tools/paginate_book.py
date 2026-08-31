@@ -2,7 +2,7 @@
 """Paginate《歸源手鏡》into vertical RTL page plan for Figma.
 
 Binding: odd pages on the RIGHT, even pages on the LEFT (直排右翻).
-Body metrics default to 10 pt / 12.6 lh / 15×36 grid.
+Body metrics default to 10 pt / 12.6 lh / 15×42 grid.
 
 Typography is semantic: manuscript labels (e.g.「副標題：」) are never
 printed; role (書名／副題／小標題／提示／落款…) drives weight, size, indent.
@@ -18,14 +18,14 @@ import zlib
 from pathlib import Path
 
 # Test Book 8: body 10 pt (was 10.5); titles/heads scale ×10/10.5.
-ROWS = 36
+ROWS = 42
 COLS = 15
 CAP = ROWS * COLS
 BINDING_MM = 21
 # OUTER companion ≈ pageW − textBlock − binding ≈ 20 mm (exact at render).
 OUTER_MM = 20
 TOP_MM = 22  # align body / 大標頭 with independent title leaf
-BOTTOM_MM = 16
+BOTTOM_MM = 10
 EDITION = "test-book-8"
 BODY_FS = 10.0
 BODY_LH = 12.6  # TB8b: −10% from 14

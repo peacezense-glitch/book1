@@ -1,11 +1,11 @@
 const PT_PER_MM = 72 / 25.4;
-const ROWS = 36;
+const ROWS = 42;
 const COLS = 15;
 const PAGE_CAPACITY = ROWS * COLS;
 const BINDING_MM = 21;
 const OUTER_MM = 20; // nominal; exact outer derived from pageW − textBlock − binding
 const TOP_MM = 22; // align body / 大標頭 with independent title leaf
-const BOTTOM_MM = 16;
+const BOTTOM_MM = 10;
 const SPREAD_GAP_MM = 6;
 const OPENER_TOP_MM = 22; // align with independent title leaf
 const RUNNING_HEAD_VOL_GAP_MM = 5; // 0.5 cm between 第X卷 and 卷名

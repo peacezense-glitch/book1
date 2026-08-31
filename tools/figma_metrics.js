@@ -10,10 +10,10 @@
  * - body 10.5→10 pt；行距 14.7→14；字框 cw 13.125→12.5
  * - 標題／頁眉等比縮小（×10/10.5，半點取整）
  * - 斷行／開新頁／甚字／引文退格／編號步驟等規則不變
- * - bindingMm 21；outer ≈20；topMm 22 / rows 36
+ * - bindingMm 21；outer ≈20；topMm 22 / rows 42 / bottomMm 10
  */
 module.exports = {
-  rows: 36,
+  rows: 42,
   cols: 15,
   cw: 12.5,
   cp: 21.55,
@@ -23,7 +23,7 @@ module.exports = {
   // Companion outer is derived at render time so left+right are exact.
   outerMm: 20,
   topMm: 22,
-  bottomMm: 16,
+  bottomMm: 10,
   spreadGapMm: 6,
   openerTopMm: 22,
   runningHeadVolGapMm: 5,
