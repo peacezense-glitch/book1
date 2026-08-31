@@ -1,5 +1,5 @@
 const HASH = "33efbb3d1d4672e5ace927aa3448b289f59874d4";
-const COVER_HASH = "56a116249a05143882bbc9070506f4ccf98e9f4e";
+const COVER_HASH = "5e006be93eec95627d3f275ed678f5b9a9d9effe";
 // Plate images: 九天玄女 / 呂祖 / 四人 (B/W) + 華玉講堂 promo (full color).
 const ILLUST_HASH = {
   jiutian: "59c193cd3b38b2e495eb619b2794d4cd9f520535",
@@ -20,8 +20,8 @@ const BOLD = { family: "Noto Serif TC", style: "Bold" };
 const PT = 72 / 25.4;
 const PAGE_W = 152 * PT;
 const PAGE_H = 230 * PT;
-// TB8: body 10.5→10; titles/heads ×10/10.5 (rounded to 0.5).
-const FS = 10, LH = 14, CP = 21.55, CW = 12.5, COLS = 15;
+// TB8: body 10 pt; line height −10% (14→12.6); titles/heads ×10/10.5.
+const FS = 10, LH = 12.6, CP = 21.55, CW = 12.5, COLS = 15;
 const INNER = 21 * PT, TOP = 22 * PT;
 const GAP_BODY = 5 * PT, GAP_FOLIO = 10 * PT;
 const SPREAD_GAP = 6 * PT;
@@ -30,7 +30,7 @@ const VOL_GAP = 5 * PT;
 const BLACK = { r: 0, g: 0, b: 0 }, WHITE = { r: 1, g: 1, b: 1 };
 const BOLD_STYLES = new Set(["1", "2", "5", "7", "9", "b"]);
 const STYLE_FS = { "0": 10, "1": 10.5, "2": 10.5, "5": 10.5, "6": 10.5, "7": 11.5, "8": 10, "9": 11.5, a: 10.5, b: 10 };
-const HEAD_FS = 7.5, HEAD_LH = 10.5, HEAD_W = 9.5;
+const HEAD_FS = 7.5, HEAD_LH = 9.5, HEAD_W = 9.5;
 function pageSideMargins() {
   const textBlockW = (COLS - 1) * CP + CW;
   const inner = INNER;
@@ -201,7 +201,7 @@ function renderOpener(fr, page, isOdd) {
   const lines = page.ln && page.ln.length ? page.ln : [String(page.tx || "")];
   // Chapter openers match volume size; TB8 scaled ×10/10.5 from 18/16.
   const fs = page.lv === "major" ? 15 : 17;
-  const lh = page.lv === "major" ? 22 : 26;
+  const lh = page.lv === "major" ? 20 : 23;
   const colW = 28, pitch = 37;
   const n = Math.max(lines.length, 1);
   const groupW = colW + (n - 1) * pitch;
@@ -286,7 +286,7 @@ function renderIllust(fr, page, isOdd) {
 function renderTitleCard(fr, page) {
   const title = String(page.title || "");
   const subtitle = String(page.sub || "");
-  const titleFs = 17, titleLh = 27, subFs = 10.5, subLh = 17;
+  const titleFs = 17, titleLh = 24, subFs = 10.5, subLh = 15;
   const colW = 28, pitch = 40, subGap = 18;
   let titleCols = [];
   const colonIdx = Math.max(title.indexOf("："), title.indexOf(":"));

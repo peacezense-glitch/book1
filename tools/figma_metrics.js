@@ -17,7 +17,7 @@ module.exports = {
   cols: 15,
   cw: 12.5,
   cp: 21.55,
-  lh: 14,
+  lh: 12.6,
   fs: 10,
   bindingMm: 21,
   // Companion outer is derived at render time so left+right are exact.
