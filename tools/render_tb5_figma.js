@@ -1,4 +1,4 @@
-const HASH = "33efbb3d1d4672e5ace927aa3448b289f59874d4";
+const HASH = "797faf869dbbe9e3429873db66b8c6c5654d39af";
 const COVER_HASH = "5e006be93eec95627d3f275ed678f5b9a9d9effe";
 // Plate images: 九天玄女 / 呂祖 / 四人 (B/W) + 華玉講堂 promo (full color).
 const ILLUST_HASH = {
