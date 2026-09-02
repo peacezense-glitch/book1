@@ -363,6 +363,7 @@ const QR_HASH = {
   course: "4e1ff3076a60e15435e6f294a18981cc5f6d3da9",
   youtube: "e4b85d539ea2a68e7ab49a61311a67a25e366c83",
 };
+const COLOPHON_QR_PAD = 18; // symmetric air above QR plates and below captions
 function addMetaRow(fr, line, font, size, x, y, contentW, labelW, name) {
   const idx = line.indexOf("／");
   if (idx < 0) {
@@ -408,7 +409,7 @@ function placeColophonQrPair(fr, qr, marginX, y, contentW) {
   y += cell + 8;
   addHText(fr, course.caption || "講堂課程登記表", REG, 7.5, startX - 6, y, cell + 12, 12, "CENTER", "colophon-qr-caption-course");
   addHText(fr, youtube.caption || "Youtube", REG, 7.5, startX + cell + gap - 6, y, cell + 12, 12, "CENTER", "colophon-qr-caption-youtube");
-  return y + 18;
+  return y + 12;
 }
 function renderColophon(fr, page) {
   // Remembered TB5 manual edits: no "Center" label, value column align, dual QR + captions.
@@ -454,7 +455,7 @@ function renderColophon(fr, page) {
     if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
       y += 20; // extra air above the QR invite line
       addHText(fr, line, REG, 8, marginX, y, contentW, 12, "CENTER", "colophon-invite");
-      y += 14;
+      y += 12 + COLOPHON_QR_PAD;
       y = placeColophonQrPair(fr, page.qr, marginX, y, contentW);
       qrPlaced = true;
       continue;
@@ -463,7 +464,7 @@ function renderColophon(fr, page) {
     y += 12;
   }
   if (!qrPlaced) {
-    y += 10;
+    y += 10 + COLOPHON_QR_PAD;
     y = placeColophonQrPair(fr, page.qr, marginX, y, contentW);
   }
   const legalHeights = legal.map((line) => {
@@ -472,7 +473,7 @@ function renderColophon(fr, page) {
     return 14;
   });
   const legalBlock = legalHeights.reduce((sum, h) => sum + h + 2, 0);
-  y = Math.min(y + 8, PAGE_H - bottomPad - legalBlock);
+  y = Math.min(y + COLOPHON_QR_PAD, PAGE_H - bottomPad - legalBlock);
   for (let k = 0; k < legal.length; k++) {
     addHText(fr, legal[k], REG, 6.5, marginX, y, contentW, legalHeights[k], "LEFT", "colophon-legal");
     y += legalHeights[k] + 2;

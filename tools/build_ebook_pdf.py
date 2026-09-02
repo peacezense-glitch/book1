@@ -60,6 +60,7 @@ ASSETS = {
     "qr_youtube": Path("assets/colophon-youtube-qr.png"),
 }
 IMAGE_JPEG_Q = 88
+COLOPHON_QR_PAD = 18  # symmetric air above QR plates and below captions
 FONT_URLS = {
     "NotoSerifTC-Regular.otf": "https://github.com/notofonts/noto-cjk/raw/main/Serif/OTF/TraditionalChinese/NotoSerifCJKtc-Regular.otf",
     "NotoSerifTC-Bold.otf": "https://github.com/notofonts/noto-cjk/raw/main/Serif/OTF/TraditionalChinese/NotoSerifCJKtc-Bold.otf",
@@ -362,6 +363,46 @@ class BookPdf:
             for j, ch in enumerate(chars):
                 self._insert_centered(page, col_x, top + 48 + j * sub_lh, col_w, sub_lh, ch, self.reg, sub_fs, reg_name)
 
+    def _place_colophon_qr_pair(
+        self,
+        page: pymupdf.Page,
+        margin_x: float,
+        y: float,
+        content_w: float,
+        qr: dict | None = None,
+    ) -> float:
+        qr = qr or {}
+        course = qr.get("course") or {}
+        youtube = qr.get("youtube") or {}
+        reg_name, _ = self.fonts()
+        qr_size = 72
+        pad = 7
+        cell = qr_size + pad * 2
+        gap = 28
+        pair_w = cell * 2 + gap
+        start_x = margin_x + (content_w - pair_w) / 2
+        for dx, asset in ((0, "qr_course"), (cell + gap, "qr_youtube")):
+            plate = pymupdf.Rect(start_x + dx, y, start_x + dx + cell, y + cell)
+            page.draw_rect(plate, color=(0.55, 0.55, 0.55), fill=(1, 1, 1), width=0.5)
+            img_rect = pymupdf.Rect(plate.x0 + pad, plate.y0 + pad, plate.x1 - pad, plate.y1 - pad)
+            self.insert_image_file(page, ASSETS[asset], img_rect, keep_alpha=True)
+        y += cell + 8
+        cap_w = cell + 12
+        for dx, label in (
+            (0, course.get("caption") or "講堂課程登記表"),
+            (cell + gap, youtube.get("caption") or "Youtube"),
+        ):
+            cap_x = start_x + dx - 6
+            tw = len(label) * 7.5
+            page.insert_text(
+                (cap_x + (cap_w - tw) / 2, y + 9),
+                label,
+                fontname=reg_name,
+                fontsize=7.5,
+                color=BLACK,
+            )
+        return y + 12
+
     def draw_colophon(self, page: pymupdf.Page, spec: dict) -> None:
         margin_x = 26
         content_w = PAGE_W - margin_x * 2
@@ -418,38 +459,16 @@ class BookPdf:
             if re.search(r"掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維", line):
                 y += 20
                 page.insert_text((margin_x, y + 10), line, fontname=reg_name, fontsize=8, color=BLACK)
-                y += 14
-                qr_size = 72
-                pad = 7
-                cell = qr_size + pad * 2
-                gap = 28
-                pair_w = cell * 2 + gap
-                start_x = margin_x + (content_w - pair_w) / 2
-                for dx, asset in ((0, "qr_course"), (cell + gap, "qr_youtube")):
-                    plate = pymupdf.Rect(start_x + dx, y, start_x + dx + cell, y + cell)
-                    page.draw_rect(plate, color=(0.55, 0.55, 0.55), fill=(1, 1, 1), width=0.5)
-                    img_rect = pymupdf.Rect(plate.x0 + pad, plate.y0 + pad, plate.x1 - pad, plate.y1 - pad)
-                    self.insert_image_file(page, ASSETS[asset], img_rect, keep_alpha=True)
-                y += cell + 26
+                y += 12 + COLOPHON_QR_PAD
+                y = self._place_colophon_qr_pair(page, margin_x, y, content_w, spec.get("qr"))
                 qr_placed = True
                 continue
             page.insert_text((margin_x, y + 10), line, fontname=reg_name, fontsize=8, color=BLACK)
             y += 12
         if not qr_placed:
-            y += 10
-            qr_size = 72
-            pad = 7
-            cell = qr_size + pad * 2
-            gap = 28
-            pair_w = cell * 2 + gap
-            start_x = margin_x + (content_w - pair_w) / 2
-            for dx, asset in ((0, "qr_course"), (cell + gap, "qr_youtube")):
-                plate = pymupdf.Rect(start_x + dx, y, start_x + dx + cell, y + cell)
-                page.draw_rect(plate, color=(0.55, 0.55, 0.55), fill=(1, 1, 1), width=0.5)
-                img_rect = pymupdf.Rect(plate.x0 + pad, plate.y0 + pad, plate.x1 - pad, plate.y1 - pad)
-                self.insert_image_file(page, ASSETS[asset], img_rect, keep_alpha=True)
-            y += cell + 26
-        y = min(y + 8, PAGE_H - 18 * MM - len(legal) * 16)
+            y += 10 + COLOPHON_QR_PAD
+            y = self._place_colophon_qr_pair(page, margin_x, y, content_w, spec.get("qr"))
+        y = min(y + COLOPHON_QR_PAD, PAGE_H - 18 * MM - len(legal) * 16)
         for line in legal:
             h = 48 if len(line) > 90 else 36 if len(line) > 60 else 14
             page.insert_text((margin_x, y + h - 2), line, fontname=reg_name, fontsize=6.5, color=BLACK)
