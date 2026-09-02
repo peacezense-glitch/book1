@@ -100,7 +100,7 @@ python3 tools/build_print_pdf.py
 python3 tools/merge_ebook_pdf.py
 # → exports/歸源手鏡-ebook.pdf（高解析，~150 MB）
 
-# 壓縮為手機用 ebook（目標 ~5 MB，72–96 dpi JPEG 重製）
+# 壓縮為手機用 ebook（目標 ~5 MB，全彩 JPEG 重製）
 python3 tools/compress_ebook_pdf.py --target-mb 5
 # → exports/歸源手鏡-ebook-5mb.pdf
 ```
