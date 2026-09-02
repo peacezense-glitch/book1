@@ -2,7 +2,7 @@ const HASH = "797faf869dbbe9e3429873db66b8c6c5654d39af";
 const COVER_HASH = "d407638bc4da7eacc786b0f29dc63004b8dd2ff0";
 // Plate images: 九天玄女 / 呂祖 / 四人 (B/W) + 華玉講堂 promo (full color).
 const ILLUST_HASH = {
-  jiutian: "59c193cd3b38b2e495eb619b2794d4cd9f520535",
+  jiutian: "eedc6a06ff844c8ecb66c9515637aa3c69e9b655",
   luzu: "2424ced292292c58f13c612266a0361a395ce240",
   four: "5216d16a1cbc63cfba5ba932b0197e315c480c8c",
   promo: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65",
