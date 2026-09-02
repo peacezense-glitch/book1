@@ -98,7 +98,11 @@ python3 tools/build_print_pdf.py
 # 1) 在 Figma 取得葉面清單 → data/ebook-export-manifest.json（agent 可自動生成）
 # 2) 逐葉 download_assets (pdf, scale 2) → exports/ebook-pages/
 python3 tools/merge_ebook_pdf.py
-# → exports/歸源手鏡-ebook.pdf
+# → exports/歸源手鏡-ebook.pdf（高解析，~150 MB）
+
+# 壓縮為手機用 ebook（目標 ~5 MB，72–96 dpi JPEG 重製）
+python3 tools/compress_ebook_pdf.py --target-mb 5
+# → exports/歸源手鏡-ebook-5mb.pdf
 ```
 
 EPUB 應由 DOCX／結構化書稿另外生成，不要從 Figma PDF 反向轉換。
