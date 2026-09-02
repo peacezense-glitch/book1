@@ -1,0 +1,569 @@
+const HASH = "797faf869dbbe9e3429873db66b8c6c5654d39af";
+const COVER_HASH = "d407638bc4da7eacc786b0f29dc63004b8dd2ff0";
+// Plate images: 九天玄女 / 呂祖 / 四人 (B/W) + 華玉講堂 promo (full color).
+const ILLUST_HASH = {
+  jiutian: "eedc6a06ff844c8ecb66c9515637aa3c69e9b655",
+  luzu: "2424ced292292c58f13c612266a0361a395ce240",
+  four: "5216d16a1cbc63cfba5ba932b0197e315c480c8c",
+  promo: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65",
+  endcircle: "72148712d3047cfd9ac0815fd91e5ea0ffca8c65", // legacy alias
+};
+const PAGE_NAME = "Test Book 8";
+const PAGE = figma.root.children.find((p) => p.name === PAGE_NAME);
+if (!PAGE) throw new Error("missing Test Book 8");
+await figma.setCurrentPageAsync(PAGE);
+for (const child of [...PAGE.children]) child.remove();
+await figma.loadFontAsync({ family: "Noto Serif TC", style: "Regular" });
+await figma.loadFontAsync({ family: "Noto Serif TC", style: "Bold" });
+const REG = { family: "Noto Serif TC", style: "Regular" };
+const BOLD = { family: "Noto Serif TC", style: "Bold" };
+const PT = 72 / 25.4;
+const PAGE_W = 152 * PT;
+const PAGE_H = 230 * PT;
+// TB8: body 10 pt; line height −10% (14→12.6); titles/heads ×10/10.5.
+const FS = 10, LH = 12.6, CP = 21.55, CW = 12.5, COLS = 15;
+const INNER = 21 * PT, TOP = 22 * PT;
+const GAP_BODY = 5 * PT, GAP_FOLIO = 10 * PT;
+const SPREAD_GAP = 6 * PT;
+const OPENER_TOP = 22 * PT;
+const VOL_GAP = 5 * PT;
+const BLACK = { r: 0, g: 0, b: 0 }, WHITE = { r: 1, g: 1, b: 1 };
+const BOLD_STYLES = new Set(["1", "2", "5", "7", "9", "b"]);
+const STYLE_FS = { "0": 10, "1": 10.5, "2": 10.5, "5": 10.5, "6": 10.5, "7": 11.5, "8": 10, "9": 11.5, a: 10.5, b: 10 };
+const HEAD_FS = 7.5, HEAD_LH = 9.5, HEAD_W = 9.5;
+function pageSideMargins() {
+  const textBlockW = (COLS - 1) * CP + CW;
+  const inner = INNER;
+  const outer = PAGE_W - textBlockW - inner;
+  return { inner, outer, textBlockW };
+}
+function u32(b, i) { return ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0; }
+function utf8Decode(bytes) {
+  let out = "", i = 0;
+  while (i < bytes.length) {
+    const c = bytes[i++];
+    if (c < 0x80) out += String.fromCharCode(c);
+    else if (c < 0xe0) out += String.fromCharCode(((c & 0x1f) << 6) | (bytes[i++] & 0x3f));
+    else if (c < 0xf0) {
+      const c2 = bytes[i++], c3 = bytes[i++];
+      out += String.fromCharCode(((c & 0x0f) << 12) | ((c2 & 0x3f) << 6) | (c3 & 0x3f));
+    } else {
+      const c2 = bytes[i++], c3 = bytes[i++], c4 = bytes[i++];
+      let cp = ((c & 0x07) << 18) | ((c2 & 0x3f) << 12) | ((c3 & 0x3f) << 6) | (c4 & 0x3f);
+      cp -= 0x10000;
+      out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+    }
+  }
+  return out;
+}
+const image = figma.getImageByHash(HASH);
+const bytes = await image.getBytesAsync();
+let pos = 8; const collected = [];
+while (pos + 8 <= bytes.length) {
+  const len = u32(bytes, pos);
+  const tag = String.fromCharCode(bytes[pos + 4], bytes[pos + 5], bytes[pos + 6], bytes[pos + 7]);
+  const start = pos + 8;
+  const body = bytes.slice(start, start + len);
+  pos = start + len + 4;
+  if (tag === "bkDt") for (let i = 0; i < body.length; i++) collected.push(body[i]);
+  if (tag === "IEND") break;
+}
+const plan = JSON.parse(utf8Decode(Uint8Array.from(collected)));
+const pages = plan.pages;
+const asset = figma.createRectangle();
+PAGE.appendChild(asset);
+asset.name = "BOOK_DATA_ASSET";
+asset.resize(1, 1); asset.x = -2000; asset.y = -2000;
+asset.fills = [{ type: "IMAGE", imageHash: HASH, scaleMode: "FILL" }];
+// Front cover (outside interior pagination).
+const cover = figma.createFrame();
+PAGE.appendChild(cover);
+cover.name = "封面";
+cover.resize(PAGE_W, PAGE_H);
+cover.x = 80;
+cover.y = 80;
+cover.clipsContent = true;
+cover.fills = [{ type: "IMAGE", imageHash: COVER_HASH, scaleMode: "FILL" }];
+const SPREAD_START_Y = 80 + PAGE_H + 72;
+function ensureSpread(si) {
+  let sp = PAGE.children.find((c) => c.name === `對頁${si + 1}`);
+  if (!sp) {
+    sp = figma.createFrame();
+    PAGE.appendChild(sp);
+    sp.name = `對頁${si + 1}`;
+    sp.resize(PAGE_W * 2 + SPREAD_GAP, PAGE_H);
+    sp.fills = [];
+    sp.clipsContent = false;
+    sp.x = 80;
+    sp.y = SPREAD_START_Y + si * (PAGE_H + 72);
+  }
+  return sp;
+}
+function splitRunningHead(title) {
+  const clean = String(title || "");
+  const vol = clean.match(/^(第[一二三四五六七八九十百千零〇\d]+卷)(.+)$/);
+  if (vol && vol[2]) return [vol[1], vol[2]];
+  const app = clean.match(/^(附錄[一二三四])(.+)$/);
+  if (app && app[2]) return [app[1], app[2]];
+  return [clean, ""];
+}
+function addRunningHead(fr, page) {
+  const isOdd = page.n % 2 === 1;
+  const { inner, outer, textBlockW } = pageSideMargins();
+  const [head, sub] = splitRunningHead(String(page.vh || ""));
+  const folio = String(page.fo || "");
+  const lineHeight = HEAD_LH, width = HEAD_W;
+  const headChars = Array.from(head).filter(Boolean);
+  const subChars = Array.from(sub).filter(Boolean);
+  const folioChars = Array.from(folio);
+  const headH = Math.max(headChars.length, 1) * lineHeight + 2;
+  const subH = subChars.length ? subChars.length * lineHeight + 2 : 0;
+  const titleBlockH = headH + (subH ? VOL_GAP + subH : 0);
+  const folioH = Math.max(folioChars.length, 1) * lineHeight + 2;
+  const titleY = PAGE_H / 2 - GAP_FOLIO / 2 - titleBlockH;
+  const folioY = PAGE_H / 2 + GAP_FOLIO / 2;
+  const x = isOdd ? PAGE_W - outer + GAP_BODY : PAGE_W - inner - textBlockW - GAP_BODY - width;
+  if (headChars.length) {
+    const node = figma.createText();
+    fr.appendChild(node);
+    node.fontName = REG; node.fontSize = HEAD_FS;
+    node.characters = headChars.join("\n");
+    node.fills = [{ type: "SOLID", color: BLACK }];
+    node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "CENTER";
+    node.lineHeight = { unit: "PIXELS", value: lineHeight };
+    node.textAutoResize = "NONE"; node.resize(width, headH);
+    node.x = x; node.y = titleY; node.name = "卷題";
+  }
+  if (subChars.length) {
+    const node = figma.createText();
+    fr.appendChild(node);
+    node.fontName = REG; node.fontSize = HEAD_FS;
+    node.characters = subChars.join("\n");
+    node.fills = [{ type: "SOLID", color: BLACK }];
+    node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "CENTER";
+    node.lineHeight = { unit: "PIXELS", value: lineHeight };
+    node.textAutoResize = "NONE"; node.resize(width, subH);
+    node.x = x; node.y = titleY + headH + VOL_GAP; node.name = "卷題名";
+  }
+  if (folioChars.length) {
+    const node = figma.createText();
+    fr.appendChild(node);
+    node.fontName = REG; node.fontSize = HEAD_FS;
+    node.characters = folioChars.join("\n");
+    node.fills = [{ type: "SOLID", color: BLACK }];
+    node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "CENTER";
+    node.lineHeight = { unit: "PIXELS", value: lineHeight };
+    node.textAutoResize = "NONE"; node.resize(width, folioH);
+    node.x = x; node.y = folioY; node.name = "頁碼";
+  }
+}
+function styleName(s0) {
+  return ({ "1": "小標題", "2": "提示", "5": "目錄卷", "6": "目錄章", "7": "落款", "8": "落款年月", "9": "書名", a: "副題", b: "次級標" })[s0] || "正文";
+}
+function renderCols(fr, cols, isOdd) {
+  const { inner, outer } = pageSideMargins();
+  const rightMargin = isOdd ? outer : inner;
+  const rightEdge = PAGE_W - rightMargin - CW;
+  for (const col of cols) {
+    const chars = Array.from(col.c);
+    if (!chars.length) continue;
+    const st = col.s.length === 1 ? col.s.repeat(chars.length) : col.s;
+    const indent = col.d || 0;
+    let i = 0;
+    while (i < chars.length) {
+      const s0 = st[i] || "0";
+      let j = i + 1;
+      while (j < chars.length && (st[j] || "0") === s0) j++;
+      const node = figma.createText();
+      fr.appendChild(node);
+      node.fontName = BOLD_STYLES.has(s0) ? BOLD : REG;
+      node.fontSize = col.fs || STYLE_FS[s0] || FS;
+      node.characters = chars.slice(i, j).join("\n");
+      node.fills = [{ type: "SOLID", color: BLACK }];
+      node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "CENTER";
+      node.lineHeight = { unit: "PIXELS", value: LH };
+      node.textAutoResize = "NONE";
+      node.resize(CW, (j - i) * LH + 2);
+      node.x = rightEdge - col.i * CP;
+      node.y = TOP + (indent + i) * LH;
+      node.name = styleName(s0);
+      i = j;
+    }
+  }
+}
+function renderOpener(fr, page, isOdd) {
+  const imgKey = page.img;
+  if (imgKey && ILLUST_HASH[imgKey]) {
+    // Plate openers: image fills the text block; section title stays in running head.
+    placeIllust(fr, imgKey, { top: TOP, bottomPad: 18 * PT, isOdd });
+    return;
+  }
+  const lines = page.ln && page.ln.length ? page.ln : [String(page.tx || "")];
+  // Chapter openers match volume size; TB8 scaled ×10/10.5 from 18/16.
+  const fs = page.lv === "major" ? 15 : 17;
+  const lh = page.lv === "major" ? 20 : 23;
+  const colW = 28, pitch = 37;
+  const n = Math.max(lines.length, 1);
+  const groupW = colW + (n - 1) * pitch;
+  const rightmostX = PAGE_W / 2 + groupW / 2 - colW;
+  let tallest = 0;
+  for (let i = 0; i < lines.length; i++) {
+    let chars = Array.from(String(lines[i]));
+    if (!chars.length) continue;
+    let colon = null;
+    const last = chars[chars.length - 1];
+    if (last === "：" || last === ":" || last === "︓") { colon = "："; chars = chars.slice(0, -1); }
+    const h = chars.length * lh + 2;
+    tallest = Math.max(tallest, h + (colon ? lh : 0));
+    const colX = rightmostX - i * pitch;
+    if (chars.length) {
+      const node = figma.createText();
+      fr.appendChild(node);
+      node.fontName = BOLD; node.fontSize = fs;
+      node.characters = chars.join("\n");
+      node.fills = [{ type: "SOLID", color: BLACK }];
+      node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "TOP";
+      node.lineHeight = { unit: "PIXELS", value: lh };
+      node.textAutoResize = "NONE"; node.resize(colW, h);
+      node.x = colX; node.y = OPENER_TOP; node.name = "opener";
+    }
+    if (colon) {
+      const node = figma.createText();
+      fr.appendChild(node);
+      node.fontName = BOLD; node.fontSize = fs;
+      node.characters = colon;
+      node.fills = [{ type: "SOLID", color: BLACK }];
+      node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "CENTER";
+      node.lineHeight = { unit: "PIXELS", value: lh };
+      node.textAutoResize = "NONE"; node.resize(colW, lh + 2);
+      node.x = colX; node.y = OPENER_TOP + chars.length * lh; node.name = "opener-colon";
+    }
+  }
+  const rule = figma.createRectangle();
+  fr.appendChild(rule);
+  rule.name = "rule";
+  rule.resize(0.7, Math.max(tallest, 220));
+  rule.x = rightmostX + colW + 14;
+  rule.y = OPENER_TOP;
+  rule.fills = [{ type: "SOLID", color: BLACK }];
+}
+function placeIllust(fr, imgKey, opts) {
+  const hash = ILLUST_HASH[imgKey];
+  if (!hash || String(hash).startsWith("PLACEHOLDER")) return null;
+  const { inner, outer, textBlockW } = pageSideMargins();
+  const isOdd = !!(opts && opts.isOdd);
+  const top = (opts && opts.top != null) ? opts.top : TOP;
+  const bottomPad = (opts && opts.bottomPad != null) ? opts.bottomPad : 16 * PT;
+  const boxX = isOdd ? inner : outer;
+  const boxW = textBlockW;
+  const boxH = Math.max(80, PAGE_H - top - bottomPad);
+  const node = figma.createRectangle();
+  fr.appendChild(node);
+  node.name = `插圖-${imgKey}`;
+  node.resize(boxW, boxH);
+  node.x = boxX;
+  node.y = top;
+  node.fills = [{ type: "IMAGE", imageHash: hash, scaleMode: "FIT" }];
+  return node;
+}
+function renderIllust(fr, page, isOdd) {
+  const imgKey = page.img || "";
+  // Full-color promo / end leaf: edge-to-edge (ebook + color print).
+  if (imgKey === "promo" || imgKey === "endcircle" || page.bleed) {
+    const hash = ILLUST_HASH[imgKey] || ILLUST_HASH.promo || COVER_HASH;
+    if (!hash) return;
+    const node = figma.createRectangle();
+    fr.appendChild(node);
+    node.name = `插圖-${imgKey || "bleed"}`;
+    node.resize(PAGE_W, PAGE_H);
+    node.x = 0;
+    node.y = 0;
+    node.fills = [{ type: "IMAGE", imageHash: hash, scaleMode: "FILL" }];
+    return;
+  }
+  placeIllust(fr, imgKey, { top: TOP, bottomPad: 16 * PT, isOdd });
+}
+function renderTitleCard(fr, page) {
+  const title = String(page.title || "");
+  const subtitle = String(page.sub || "");
+  const titleFs = 17, titleLh = 24, subFs = 10.5, subLh = 15;
+  const colW = 28, pitch = 40, subGap = 18;
+  let titleCols = [];
+  const colonIdx = Math.max(title.indexOf("："), title.indexOf(":"));
+  if (colonIdx > 0) titleCols = [title.slice(0, colonIdx), title.slice(colonIdx + 1)].filter(Boolean);
+  else titleCols = title ? [title] : [];
+  const groupW = colW + Math.max(titleCols.length - 1, 0) * pitch + (subtitle ? pitch + subGap : 0);
+  const rightmostX = PAGE_W / 2 + groupW / 2 - colW;
+  const titleHeights = titleCols.map((col, i) => {
+    const chars = Array.from(col);
+    const colonExtra = colonIdx > 0 && i === 0 ? titleLh : 0;
+    return chars.length * titleLh + colonExtra + 4;
+  });
+  const subH = subtitle ? Array.from(subtitle).length * subLh + 4 : 0;
+  const blockH = Math.max(...(titleHeights.length ? titleHeights : [0]), subH || 0, 220);
+  const top = (PAGE_H - blockH) / 2 - 8;
+  const rule = figma.createRectangle();
+  fr.appendChild(rule);
+  rule.name = "title-rule";
+  rule.resize(0.7, blockH);
+  rule.x = rightmostX + colW + 18;
+  rule.y = top;
+  rule.fills = [{ type: "SOLID", color: BLACK }];
+  for (let i = 0; i < titleCols.length; i++) {
+    const chars = Array.from(titleCols[i]);
+    const colX = rightmostX - i * pitch;
+    const node = figma.createText();
+    fr.appendChild(node);
+    node.fontName = BOLD; node.fontSize = titleFs;
+    node.characters = chars.join("\n");
+    node.fills = [{ type: "SOLID", color: BLACK }];
+    node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "TOP";
+    node.lineHeight = { unit: "PIXELS", value: titleLh };
+    node.textAutoResize = "NONE";
+    node.resize(colW, chars.length * titleLh + 4);
+    node.x = colX; node.y = top; node.name = "書名";
+    if (i === 0 && colonIdx > 0) {
+      const colon = figma.createText();
+      fr.appendChild(colon);
+      colon.fontName = BOLD; colon.fontSize = titleFs;
+      colon.characters = "：";
+      colon.fills = [{ type: "SOLID", color: BLACK }];
+      colon.textAlignHorizontal = "CENTER"; colon.textAlignVertical = "CENTER";
+      colon.lineHeight = { unit: "PIXELS", value: titleLh };
+      colon.textAutoResize = "NONE";
+      colon.resize(colW, titleLh + 2);
+      colon.x = colX; colon.y = top + chars.length * titleLh; colon.name = "書名-colon";
+    }
+  }
+  if (subtitle) {
+    const chars = Array.from(subtitle);
+    const node = figma.createText();
+    fr.appendChild(node);
+    node.fontName = REG; node.fontSize = subFs;
+    node.characters = chars.join("\n");
+    node.fills = [{ type: "SOLID", color: BLACK }];
+    node.textAlignHorizontal = "CENTER"; node.textAlignVertical = "TOP";
+    node.lineHeight = { unit: "PIXELS", value: subLh };
+    node.textAutoResize = "NONE";
+    node.resize(colW, chars.length * subLh + 4);
+    node.x = rightmostX - titleCols.length * pitch - subGap;
+    node.y = top + 48; node.name = "副題";
+  }
+}
+function addHText(fr, text, font, size, x, y, w, h, align, name) {
+  const node = figma.createText();
+  fr.appendChild(node);
+  node.fontName = font; node.fontSize = size; node.characters = text;
+  node.fills = [{ type: "SOLID", color: BLACK }];
+  node.textAlignHorizontal = align; node.textAutoResize = "NONE";
+  node.resize(w, h); node.x = x; node.y = y; node.name = name;
+}
+// Colophon QR assets: B/W print plates with quiet zone (course + Youtube).
+const QR_HASH = {
+  course: "4e1ff3076a60e15435e6f294a18981cc5f6d3da9",
+  youtube: "e4b85d539ea2a68e7ab49a61311a67a25e366c83",
+};
+const COLOPHON_QR_PAD = 18; // symmetric air above QR plates and below captions
+function addMetaRow(fr, line, font, size, x, y, contentW, labelW, name) {
+  const idx = line.indexOf("／");
+  if (idx < 0) {
+    addHText(fr, line, font, size, x, y, contentW, 12, "LEFT", name);
+    return;
+  }
+  const label = line.slice(0, idx + 1);
+  const value = line.slice(idx + 1).replace(/^\s+/, "");
+  addHText(fr, label, font, size, x, y, labelW, 12, "LEFT", name + "-label");
+  addHText(fr, value, font, size, x + labelW, y, Math.max(40, contentW - labelW), 12, "LEFT", name + "-value");
+}
+function placeColophonQrPair(fr, qr, marginX, y, contentW) {
+  const data = qr || {};
+  const course = data.course || {};
+  const youtube = data.youtube || {};
+  // Matched pair: white plate + hairline + equal QR modules for print scan.
+  const qrSize = 72;
+  const pad = 7;
+  const cell = qrSize + pad * 2;
+  const gap = 28;
+  const pairW = cell * 2 + gap;
+  const startX = marginX + (contentW - pairW) / 2;
+  const mk = (hash, x, name) => {
+    const plate = figma.createRectangle();
+    fr.appendChild(plate);
+    plate.name = name + "-plate";
+    plate.resize(cell, cell);
+    plate.x = x;
+    plate.y = y;
+    plate.fills = [{ type: "SOLID", color: WHITE }];
+    plate.strokes = [{ type: "SOLID", color: { r: 0.55, g: 0.55, b: 0.55 } }];
+    plate.strokeWeight = 0.5;
+    const img = figma.createRectangle();
+    fr.appendChild(img);
+    img.name = name;
+    img.resize(qrSize, qrSize);
+    img.x = x + pad;
+    img.y = y + pad;
+    img.fills = [{ type: "IMAGE", scaleMode: "FILL", imageHash: hash }];
+  };
+  mk(QR_HASH.course, startX, course.title || "講堂課程登記表");
+  mk(QR_HASH.youtube, startX + cell + gap, youtube.title || "Youtube");
+  y += cell + 8;
+  addHText(fr, course.caption || "講堂課程登記表", REG, 7.5, startX - 6, y, cell + 12, 12, "CENTER", "colophon-qr-caption-course");
+  addHText(fr, youtube.caption || "Youtube", REG, 7.5, startX + cell + gap - 6, y, cell + 12, 12, "CENTER", "colophon-qr-caption-youtube");
+  return y + 12;
+}
+function renderColophon(fr, page) {
+  // Remembered TB5 manual edits: no "Center" label, value column align, dual QR + captions.
+  const marginX = 26, bottomPad = 18 * PT, contentW = PAGE_W - marginX * 2, labelW = 105;
+  const indentX = marginX + labelW;
+  let y = 28;
+  addHText(fr, `《${page.title || "歸源手鏡"}》`, BOLD, 14, marginX, y, contentW, 22, "CENTER", "colophon-title");
+  y += 26;
+  const matter = page.matter || [];
+  let i = 0;
+  if (matter[0] && matter[0].includes("歸源手鏡")) i = 1;
+  // Bibliographic meta (系列…資料提供)
+  while (i < matter.length && matter[i].includes("／") && !/^(版次|國際書號|圖書類別|特別鳴謝)／/.test(matter[i])) {
+    addMetaRow(fr, matter[i], REG, 8.5, marginX, y, contentW, labelW, "colophon-meta");
+    y += 12;
+    i++;
+  }
+  // Indented institute / 華玉講堂 contact block (no "Center" heading)
+  y += 4;
+  while (
+    i < matter.length &&
+    !matter[i].includes("／") &&
+    !/掃瞄二維碼|掃描二維碼|All Rights? Reserved|版權所有|免責聲明|Nothing may be reprinted|Youtube|華玉講堂\s*課程/i.test(matter[i])
+  ) {
+    addHText(fr, matter[i], REG, 7.5, indentX, y, contentW - labelW, 11, "LEFT", "colophon-center");
+    y += 11;
+    i++;
+  }
+  y += 8;
+  // Edition / ISBN / category / thanks
+  while (i < matter.length && matter[i].includes("／")) {
+    addMetaRow(fr, matter[i], REG, 8, marginX, y, contentW, labelW, "colophon-pub");
+    y += 12;
+    i++;
+  }
+  const rest = matter.slice(i);
+  const legalStart = rest.findIndex((line) => /All Rights? Reserved|版權所有|免責聲明|Nothing may be reprinted/i.test(line));
+  const beforeLegal = legalStart === -1 ? rest : rest.slice(0, legalStart);
+  const legal = legalStart === -1 ? [] : rest.slice(legalStart);
+  let qrPlaced = false;
+  for (const line of beforeLegal) {
+    if (/Youtube|華玉講堂\s*課程$/.test(line)) continue;
+    if (/掃瞄二維碼|掃描二維碼|掃描二維|掃瞄二維/.test(line)) {
+      y += 20; // extra air above the QR invite line
+      addHText(fr, line, REG, 8, marginX, y, contentW, 12, "CENTER", "colophon-invite");
+      y += 12 + COLOPHON_QR_PAD;
+      y = placeColophonQrPair(fr, page.qr, marginX, y, contentW);
+      qrPlaced = true;
+      continue;
+    }
+    addHText(fr, line, REG, 8, marginX, y, contentW, 12, "LEFT", "colophon-pub");
+    y += 12;
+  }
+  if (!qrPlaced) {
+    y += 10 + COLOPHON_QR_PAD;
+    y = placeColophonQrPair(fr, page.qr, marginX, y, contentW);
+  }
+  const legalHeights = legal.map((line) => {
+    if (line.length > 90) return 48;
+    if (line.length > 60) return 36;
+    return 14;
+  });
+  const legalBlock = legalHeights.reduce((sum, h) => sum + h + 2, 0);
+  y = Math.min(y + COLOPHON_QR_PAD, PAGE_H - bottomPad - legalBlock);
+  for (let k = 0; k < legal.length; k++) {
+    addHText(fr, legal[k], REG, 6.5, marginX, y, contentW, legalHeights[k], "LEFT", "colophon-legal");
+    y += legalHeights[k] + 2;
+  }
+}
+const created = [];
+let blankPages = 0, titleCards = 0, colophonPages = 0;
+for (const page of pages) {
+  const n = page.n;
+  const si = Math.floor((n - 1) / 2);
+  const sp = ensureSpread(si);
+  const isOdd = n % 2 === 1;
+  const fr = figma.createFrame();
+  sp.appendChild(fr);
+  fr.name = `P${String(n).padStart(3, "0")}`;
+  fr.resize(PAGE_W, PAGE_H);
+  fr.fills = [{ type: "SOLID", color: WHITE }];
+  fr.clipsContent = true;
+  fr.x = isOdd ? PAGE_W + SPREAD_GAP : 0;
+  fr.y = 0;
+  if (page.t === "b") {
+    // White blank leaf (never leave a transparent/black facing page).
+    blankPages++;
+    addRunningHead(fr, page);
+    created.push(fr.id);
+    continue;
+  }
+  if (page.t === "o") renderOpener(fr, page, isOdd);
+  else if (page.t === "p") renderCols(fr, page.cols || [], isOdd);
+  else if (page.t === "i") renderIllust(fr, page, isOdd);
+  else if (page.t === "tc") { renderTitleCard(fr, page); titleCards++; }
+  else if (page.t === "c") { renderColophon(fr, page); colophonPages++; }
+  // Full-color promo plate has no running head.
+  if (page.t !== "c" && !(page.t === "i" && (page.img === "promo" || page.img === "endcircle"))) addRunningHead(fr, page);
+  created.push(fr.id);
+}
+// Any incomplete spread (missing a facing leaf) gets a white blank mate.
+for (const sp of PAGE.children.filter((c) => c.name.startsWith("對頁"))) {
+  const pageFrames = sp.children.filter((c) => /^P\d+/.test(c.name));
+  const odd = pageFrames.find((c) => parseInt(c.name.replace(/\D/g, ""), 10) % 2 === 1);
+  const even = pageFrames.find((c) => parseInt(c.name.replace(/\D/g, ""), 10) % 2 === 0);
+  if (odd && even) continue;
+  const fr = figma.createFrame();
+  sp.appendChild(fr);
+  let nGuess = 1;
+  if (odd) nGuess = parseInt(odd.name.replace(/\D/g, ""), 10) + 1;
+  else if (even) nGuess = parseInt(even.name.replace(/\D/g, ""), 10) - 1;
+  const isOdd = !odd;
+  fr.name = `P${String(Math.max(nGuess, 1)).padStart(3, "0")}-blank`;
+  fr.resize(PAGE_W, PAGE_H);
+  fr.fills = [{ type: "SOLID", color: WHITE }];
+  fr.clipsContent = true;
+  fr.x = isOdd ? PAGE_W + SPREAD_GAP : 0;
+  fr.y = 0;
+  blankPages++;
+  created.push(fr.id);
+}
+const sample = PAGE.children.find((c) => c.name === "對頁1");
+let layout = null;
+if (sample) {
+  await sample.screenshot({ scale: 0.55 });
+  const m = pageSideMargins();
+  layout = {
+    marginsMm: {
+      binding: +(INNER / PT).toFixed(2),
+      outer: +(m.outer / PT).toFixed(2),
+      textBlock: +(m.textBlockW / PT).toFixed(2),
+      sum: +((INNER + m.outer + m.textBlockW) / PT).toFixed(2)
+    },
+    pages: sample.children.map((fr) => {
+      const texts = fr.findAll((t) => t.type === "TEXT" && t.name === "正文");
+      const xs = texts.map((t) => t.x);
+      const left = xs.length ? Math.min(...xs) : null;
+      const right = xs.length ? Math.max(...xs) + CW : null;
+      return {
+        name: fr.name,
+        x: Math.round(fr.x),
+        leftMm: left == null ? null : +(left / PT).toFixed(2),
+        rightMm: right == null ? null : +((PAGE_W - right) / PT).toFixed(2)
+      };
+    })
+  };
+}
+return {
+  created: created.length,
+  blankSkipped: blankPages,
+  titleCards,
+  colophonPages,
+  spreads: PAGE.children.filter((c) => c.name.startsWith("對頁")).length,
+  layout,
+  pageId: PAGE.id,
+  createdNodeIds: created.slice(0, 8)
+};
