@@ -51,7 +51,7 @@ def main() -> None:
     parser.add_argument(
         "--out",
         type=Path,
-        default=Path("exports/歸源手鏡-ebook.pdf"),
+        default=Path("exports/歸源手鏡-ebook-figma.pdf"),
     )
     args = parser.parse_args()
     merge(args.manifest, args.pages_dir, args.out)
