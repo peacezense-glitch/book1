@@ -116,6 +116,30 @@ class BookPdf:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.doc.save(str(path), deflate=True, garbage=4, clean=True)
 
+    def fit_image_rect(self, img_path: Path, box: pymupdf.Rect, *, fit_width: bool = True) -> pymupdf.Rect:
+        """Place image in box without distortion (Figma FIT / fit-to-width)."""
+        im = Image.open(img_path)
+        iw, ih = im.size
+        if iw <= 0 or ih <= 0:
+            return box
+        box_w = box.width
+        box_h = box.height
+        if fit_width:
+            scale = box_w / iw
+            disp_w = box_w
+            disp_h = ih * scale
+            if disp_h > box_h:
+                scale = min(box_w / iw, box_h / ih)
+                disp_w = iw * scale
+                disp_h = ih * scale
+        else:
+            scale = min(box_w / iw, box_h / ih)
+            disp_w = iw * scale
+            disp_h = ih * scale
+        x0 = box.x0 + (box_w - disp_w) / 2
+        y0 = box.y0 + (box_h - disp_h) / 2
+        return pymupdf.Rect(x0, y0, x0 + disp_w, y0 + disp_h)
+
     def insert_image_file(
         self,
         page: pymupdf.Page,
@@ -123,6 +147,7 @@ class BookPdf:
         rect: pymupdf.Rect,
         *,
         keep_alpha: bool = False,
+        fit_width: bool = False,
     ) -> None:
         im = Image.open(img_path)
         if im.mode in ("RGBA", "P") and not keep_alpha:
@@ -131,7 +156,8 @@ class BookPdf:
             im = bg
         bio = BytesIO()
         im.save(bio, format="JPEG", quality=IMAGE_JPEG_Q, optimize=True)
-        page.insert_image(rect, stream=bio.getvalue())
+        place = self.fit_image_rect(img_path, rect, fit_width=fit_width) if fit_width else rect
+        page.insert_image(place, stream=bio.getvalue())
 
     def draw_running_head(self, page: pymupdf.Page, spec: dict) -> None:
         n = spec.get("n", 1)
@@ -229,7 +255,7 @@ class BookPdf:
             box_x = inner if is_odd else outer
             box_h = max(80, PAGE_H - top - bottom_pad)
             rect = pymupdf.Rect(box_x, top, box_x + text_block_w, top + box_h)
-            self.insert_image_file(page, ASSETS[img_key], rect)
+            self.insert_image_file(page, ASSETS[img_key], rect, fit_width=True)
             return
         lines = spec.get("ln") or [spec.get("tx") or ""]
         fs = 15 if spec.get("lv") == "major" else 17
@@ -281,7 +307,7 @@ class BookPdf:
         box_x = inner if is_odd else outer
         box_h = max(80, PAGE_H - top - bottom_pad)
         rect = pymupdf.Rect(box_x, top, box_x + text_block_w, top + box_h)
-        self.insert_image_file(page, ASSETS[img_key], rect)
+        self.insert_image_file(page, ASSETS[img_key], rect, fit_width=True)
 
     def draw_title_card(self, page: pymupdf.Page, spec: dict) -> None:
         title = spec.get("title") or ""
